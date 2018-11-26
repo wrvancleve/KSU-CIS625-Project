@@ -12,7 +12,9 @@ namespace StockMarketAnalysis
 {
     public partial class MainWindow : Form, IWindow
     {
-
+        /// <summary>
+        /// Handle to the MainWindowController send directories handle.
+        /// </summary>
         private SendDirectories _sendDirectories;
 
         public MainWindow(SendDirectories sendDirectories)
@@ -21,11 +23,14 @@ namespace StockMarketAnalysis
             _sendDirectories = sendDirectories;
         }
 
+        /// <summary>
+        /// Handles the event where the user presses a button on the main window.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void uxButtonHandler(object sender, EventArgs e)
         {
             string button = ((Button)sender).Name; // Get button
-           
-           
 
             if (button.Equals("uxButtonCriteriaSet"))
             {
@@ -47,8 +52,17 @@ namespace StockMarketAnalysis
                 }
                 uxTextBoxData.Text = setFinder.SelectedPath;
                 setFinder.SelectedPath = string.Empty;
-            
             }
+            else
+            {
+                List<string> directories = new List<string>();
+                directories.Add(uxTextBoxCriteriaSet.Text);
+                directories.Add(uxTextBoxData.Text);
+                _sendDirectories(directories);
+                MessageBox.Show("Program complete.");
+            }
+
+            uxButtonGo.Enabled = (uxTextBoxCriteriaSet.TextLength > 0 && uxTextBoxData.TextLength > 0); // Check for enable go button
         }
     }
 }

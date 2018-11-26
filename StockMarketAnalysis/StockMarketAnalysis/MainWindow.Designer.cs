@@ -75,6 +75,7 @@
             // 
             // uxButtonGo
             // 
+            this.uxButtonGo.Enabled = false;
             this.uxButtonGo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.uxButtonGo.Location = new System.Drawing.Point(217, 211);
             this.uxButtonGo.Name = "uxButtonGo";
@@ -82,6 +83,7 @@
             this.uxButtonGo.TabIndex = 4;
             this.uxButtonGo.Text = "Go";
             this.uxButtonGo.UseVisualStyleBackColor = true;
+            this.uxButtonGo.Click += new System.EventHandler(this.uxButtonHandler);
             // 
             // MainWindow
             // 
