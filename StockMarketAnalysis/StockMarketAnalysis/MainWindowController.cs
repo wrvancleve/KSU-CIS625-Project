@@ -13,6 +13,15 @@ namespace StockMarketAnalysis
         /// </summary>
         private IWindow _view;
 
+        /// <summary>
+        /// Queue to store our raw_data taken from pre-filtering
+        /// </summary>
+        private Queue<List<string>> _data = new Queue<List<string>>();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sendDirectories"></param>
         public MainWindowController()
         {
 
@@ -21,6 +30,24 @@ namespace StockMarketAnalysis
         public void AttachView(IWindow view)
         {
             _view = view;
+        }
+
+        /// <summary>
+        /// Handles all function
+        /// </summary>
+        /// <param name="directories"></param>
+        public void Handle(List<string> directories)
+        {
+            ReadFiles(directories);
+        }
+
+        /// <summary>
+        /// Handles reading of the file content from the list of directories
+        /// </summary>
+        /// <param name="files"></param>
+        private void ReadFiles(List<string> directories)
+        {
+                            
         }
     }
 }
