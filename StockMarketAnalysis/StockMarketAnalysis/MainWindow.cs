@@ -12,9 +12,13 @@ namespace StockMarketAnalysis
 {
     public partial class MainWindow : Form, IWindow
     {
-        public MainWindow()
+
+        private SendDirectories _sendDirectories;
+
+        public MainWindow(SendDirectories sendDirectories)
         {
             InitializeComponent();
+            _sendDirectories = sendDirectories;
         }
     }
 }
