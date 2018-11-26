@@ -1,0 +1,19 @@
+[
+	(N Korea,S Korea,South Korea | Short | Preferred)
+	(HolderID | StockCode)
+	($1000)
+]
+
+[
+	(N Korea,S Korea,South Korea | Short | Preferred)
+	(HolderID | StockCode)
+	(#1000)
+]
+
+[
+	(N Korea,S Korea,South Korea | Short | Preferred)
+	(HolderID | StockCode)
+	(%75)
+]
+
+
