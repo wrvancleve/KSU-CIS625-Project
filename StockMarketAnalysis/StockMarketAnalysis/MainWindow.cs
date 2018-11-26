@@ -20,5 +20,15 @@ namespace StockMarketAnalysis
             InitializeComponent();
             _sendDirectories = sendDirectories;
         }
+
+        private void uxButtonHandler(object sender, EventArgs e)
+        {
+            string button = ((Button)sender).Name; // Get button
+
+            if (button.Equals("uxButtonCriteriaSet"))
+            {
+
+            }
+        }
     }
 }
