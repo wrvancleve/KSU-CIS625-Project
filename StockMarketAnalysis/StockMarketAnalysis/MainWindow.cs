@@ -29,7 +29,13 @@ namespace StockMarketAnalysis
 
             if (button.Equals("uxButtonCriteriaSet"))
             {
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                DialogResult result = openFileDialog.ShowDialog();
 
+                if (result != DialogResult.OK) return;
+
+                uxTextBoxCriteriaSet.Text = openFileDialog.FileName;
+                openFileDialog.FileName = string.Empty;
             }
             else if (button.Equals("uxButtonData"))
             {

@@ -48,18 +48,18 @@
             // 
             // uxTextBoxCriteriaSet
             // 
-            this.uxTextBoxCriteriaSet.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxTextBoxCriteriaSet.Location = new System.Drawing.Point(194, 40);
+            this.uxTextBoxCriteriaSet.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.uxTextBoxCriteriaSet.Location = new System.Drawing.Point(192, 44);
             this.uxTextBoxCriteriaSet.Name = "uxTextBoxCriteriaSet";
-            this.uxTextBoxCriteriaSet.Size = new System.Drawing.Size(375, 31);
+            this.uxTextBoxCriteriaSet.Size = new System.Drawing.Size(375, 26);
             this.uxTextBoxCriteriaSet.TabIndex = 1;
             // 
             // uxTextBoxData
             // 
-            this.uxTextBoxData.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxTextBoxData.Location = new System.Drawing.Point(192, 136);
+            this.uxTextBoxData.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.uxTextBoxData.Location = new System.Drawing.Point(192, 140);
             this.uxTextBoxData.Name = "uxTextBoxData";
-            this.uxTextBoxData.Size = new System.Drawing.Size(375, 31);
+            this.uxTextBoxData.Size = new System.Drawing.Size(375, 26);
             this.uxTextBoxData.TabIndex = 3;
             // 
             // uxButtonData
