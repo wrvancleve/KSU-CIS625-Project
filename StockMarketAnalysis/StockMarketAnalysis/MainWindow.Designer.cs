@@ -71,6 +71,7 @@
             this.uxButtonData.TabIndex = 2;
             this.uxButtonData.Text = "Select Data File(s)";
             this.uxButtonData.UseVisualStyleBackColor = true;
+            this.uxButtonData.Click += new System.EventHandler(this.uxButtonHandler);
             // 
             // uxButtonGo
             // 

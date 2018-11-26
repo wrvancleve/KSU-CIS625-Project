@@ -24,10 +24,24 @@ namespace StockMarketAnalysis
         private void uxButtonHandler(object sender, EventArgs e)
         {
             string button = ((Button)sender).Name; // Get button
+           
+           
 
             if (button.Equals("uxButtonCriteriaSet"))
             {
 
+            }
+            else if (button.Equals("uxButtonData"))
+            {
+                FolderBrowserDialog setFinder = new FolderBrowserDialog();
+                DialogResult result = setFinder.ShowDialog();
+                if (result != DialogResult.OK)
+                {
+                    return;
+                }
+                uxTextBoxData.Text = setFinder.SelectedPath;
+                setFinder.SelectedPath = string.Empty;
+            
             }
         }
     }
