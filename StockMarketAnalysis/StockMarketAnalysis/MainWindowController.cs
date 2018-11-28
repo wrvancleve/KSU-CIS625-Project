@@ -49,7 +49,7 @@ namespace StockMarketAnalysis
         {
             _criteriaSetPath = directories[0];
             _dataSetPath = directories[1];
-            
+            StoreCriteriaSet();
         }
 
         /// <summary>
@@ -62,10 +62,8 @@ namespace StockMarketAnalysis
             using (StreamReader sr = new StreamReader(fs))
             {
                 List<string> set;
-                int index;
-
-                // loops over all lines in the criteria file until hits EOF
-                for (index = 0; (line = sr.ReadLine()) == null; index++)
+                
+                while ((line = sr.ReadLine()) != null)
                 {
                     line = line.Replace(" ", string.Empty);
 
@@ -77,8 +75,8 @@ namespace StockMarketAnalysis
                         {
                             set.Add(sr.ReadLine());
                         }
-                        _criteriaSets.Add(new CriteriaSet(set));
-                        index += 3;
+                        CriteriaSet temp_set = new CriteriaSet(set);
+                        _criteriaSets.Add(temp_set);
                     }
                 }
             }
