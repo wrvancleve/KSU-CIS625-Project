@@ -8,10 +8,10 @@ namespace StockMarketAnalysis
 {
     
     /// <summary>
-    /// Method for sending the file paths to the controller for different files
+    /// Delegate for the method that applys criteria sets to the data to be processed.
     /// </summary>
-    /// <param name="files">A dynamic array of file directories/paths</param>
-    public delegate void SendDirectories(List<string> directories);
+    /// <param name="directories">List containing the paths to the criteria set and data</param>
+    public delegate bool DataProcessing(List<string> directories);
 
     static class Program
     {

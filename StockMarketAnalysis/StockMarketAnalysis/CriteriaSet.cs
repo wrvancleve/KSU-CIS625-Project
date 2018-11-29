@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -36,6 +35,7 @@ namespace StockMarketAnalysis
     public class CriteriaSet
     {
         #region Pre-Filter
+
         /// <summary>
         /// Country/Countries for the Pre-Filter
         /// </summary>
@@ -50,9 +50,11 @@ namespace StockMarketAnalysis
         /// Position of stock
         /// </summary>
         private Position _position;
+
         #endregion 
 
         #region Aggregation
+
         /// <summary>
         /// Could be a combination of StockCode, Stocktype, etc.
         /// Example: SGQNS~Preferred
@@ -63,6 +65,7 @@ namespace StockMarketAnalysis
         /// Could be the number of shares held, or percentage of total shares held.
         /// </summary>
         private List<string> _aggregationSum = new List<string>();
+
         #endregion
 
         #region Post-Filter
@@ -76,28 +79,14 @@ namespace StockMarketAnalysis
             
         public CriteriaSet(List<string> set)
         {
-            
-            try
-            {
-                if (set.Count != 3)
-                {
-                    throw new Exception("Invalid Criteria Set Format");
-                }
-                Regex regex = new Regex(@"[\t]");
-                GetPreFilters(regex.Replace(set[0].Trim(), ""));
-                GetAggregates(regex.Replace(set[1].Trim(), ""));
-                GetPostFilters(regex.Replace(set[2].Trim(), ""));
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-            }
+            GetPreFilters(set[0]);
+            GetAggregates(set[1]);
+            GetPostFilters(set[2]);
         }
 
         private void GetPreFilters(string line)
         {
             string[] parts = line.Split('|');
-            if (parts.Length != 3) throw new Exception("Invalid Pre-Filtering Format");
             for (int i = 0; i < 3; i++)
             {
                 if (i == 0)
@@ -105,35 +94,44 @@ namespace StockMarketAnalysis
                     string[] countries = parts[0].Split(',');
                     foreach (string country in countries)
                     {
-                        _countries.Add(country.Trim());
+                        _countries.Add(country);
                     }
                 }
                 else if (i == 1)
                 {
-                    if (parts[1].Trim().Equals("Short")) this._position = Position.Short;
-                    else if (parts[1].Trim().Equals("Long")) this._position = Position.Long;
-                    else throw new Exception("Invalid Position");
+                    if (parts[1].Equals("Short"))
+                    {
+                        this._position = Position.Short;
+                    }
+                    else
+                    {
+                        this._position = Position.Long;
+                    }
                 }
                 else
                 {
-                    if (parts[2].Trim().Equals("Preferred")) this._type = Type.Preferred;
-                    else if (parts[2].Trim().Equals("Common")) this._type = Type.Common;
-                    else throw new Exception("Invalid Type");
+                    if (parts[2].Equals("Preferred"))
+                    {
+                        this._type = Type.Preferred;
+                    }
+                    else
+                    {
+                        this._type = Type.Common;
+                    }
                 }
             }
         }
 
         private void GetAggregates(string line)
         {
-            string[] parts = line.Trim().Split('|');
-            if (parts.Length != 2) throw new Exception("Invalid Aggregation Format");
+            string[] parts = line.Split('|');
 
             if (parts[0].Contains(','))
             {
                 string[] keys = parts[0].Split(',');
                 for (int i = 0; i < keys.Length; i++)
                 {
-                    _aggregationKey.Add(keys[i].Trim());
+                    _aggregationKey.Add(keys[i]);
                 }
             }
             else
@@ -146,7 +144,7 @@ namespace StockMarketAnalysis
                 string[] aggregates = parts[1].Split(',');
                 for (int j = 0; j < aggregates.Length; j++)
                 {
-                    _aggregationSum.Add(aggregates[j].Trim());
+                    _aggregationSum.Add(aggregates[j]);
                 }
             }
             else
@@ -157,48 +155,31 @@ namespace StockMarketAnalysis
 
         private void GetPostFilters(string line)
         {
+            string[] parts; // Create parts array
+
             if (line.Contains(','))
             {
-                string[] parts = line.Split(',');
-
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    parts[i] = parts[i].Replace(" ", "");
-                    if (parts[i][0] == '#')
-                    {
-                        _postFilters.Add(new Tuple<Criteria, double>(Criteria.Number, Convert.ToDouble(parts[i].Substring(1))));
-                    }
-                    else if (parts[i][0] == '$')
-                    {
-                        _postFilters.Add(new Tuple<Criteria, double>(Criteria.Value, Convert.ToDouble(parts[i].Substring(1))));
-                    }
-                    else if (parts[i][0] == '%')
-                    {
-                        _postFilters.Add(new Tuple<Criteria, double>(Criteria.Percent, Convert.ToDouble(parts[i].Substring(1))));
-                    }
-                    else
-                    {
-                        throw new Exception("Invalid Post-Filter Format");
-                    }
-                }
+                parts = line.Split(','); // Split into parts
             }
             else
             {
-                if (line[0] == '#')
+                parts = new string[1];
+                parts[0] = line; // Make one part
+            }
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i][0] == '#')
                 {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Number, Convert.ToDouble(line.Substring(1))));
+                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Number, Convert.ToDouble(parts[i].Substring(1))));
                 }
-                else if (line[0] == '$')
+                else if (parts[i][0] == '$')
                 {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Value, Convert.ToDouble(line.Substring(1))));
-                }
-                else if (line[0] == '%')
-                {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Percent, Convert.ToDouble(line.Substring(1))));
+                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Value, Convert.ToDouble(parts[i].Substring(1))));
                 }
                 else
                 {
-                    throw new Exception("Invalid Post-Filter Format");
+                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Percent, Convert.ToDouble(parts[i].Substring(1))));
                 }
             }
         }

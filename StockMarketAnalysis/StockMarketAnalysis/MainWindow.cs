@@ -15,12 +15,12 @@ namespace StockMarketAnalysis
         /// <summary>
         /// Handle to the MainWindowController send directories handle.
         /// </summary>
-        private SendDirectories _sendDirectories;
+        private DataProcessing _process;
 
-        public MainWindow(SendDirectories sendDirectories)
+        public MainWindow(DataProcessing process)
         {
             InitializeComponent();
-            _sendDirectories = sendDirectories;
+            _process = process;
         }
 
         /// <summary>
@@ -58,8 +58,10 @@ namespace StockMarketAnalysis
                 List<string> directories = new List<string>();
                 directories.Add(uxTextBoxCriteriaSet.Text);
                 directories.Add(uxTextBoxData.Text);
-                _sendDirectories(directories);
-                MessageBox.Show("Program complete.");
+                if(_process(directories))
+                {
+                    MessageBox.Show("Program complete.");
+                }
             }
 
             uxButtonGo.Enabled = (uxTextBoxCriteriaSet.TextLength > 0 && uxTextBoxData.TextLength > 0); // Check for enable go button
