@@ -21,6 +21,16 @@ namespace StockMarketAnalysis
     public class MainWindowController
     {
         /// <summary>
+        /// Regex for determining if a line is a comment line
+        /// </summary>
+        private static readonly Regex RegexCommentLine = new Regex(@"^\-\-");
+
+        /// <summary>
+        /// Regex for determining if a line is an operation line
+        /// </summary>
+        private static readonly Regex RegexOperationLine = new Regex(@"^[!@^#*+$&]");
+
+        /// <summary>
         /// Handle to the MainWindow which is the view for this controller.
         /// </summary>
         private IWindow _view;
@@ -83,59 +93,123 @@ namespace StockMarketAnalysis
         /// <returns></returns>
         private bool ObtainCriteriaSets()
         {
-            FileStream fs = new FileStream(_criteriaSetPath, FileMode.Open, FileAccess.Read);
-            string line = "";
-            using (StreamReader sr = new StreamReader(fs))
+            try
             {
-                List<string> set;
-                int lineNumber = 0;
-                int criteriaLineNumber;
-                
-                while ((line = sr.ReadLine()) != null)
+                /* Parsing variables */
+                char previousOperation = '\0';
+                char currentOperation = '\0';
+
+                /* Criteria set creation variables */
+                int count = 0;
+                string currentPreFilterColumn = string.Empty;
+                string currentPreFilterComparison = string.Empty;
+                List<string> currentPreFilterValues = new List<string>();
+                List<Tuple<string, string, List<string>>> preFilters = new List<Tuple<string, string, List<string>>>();
+                List<string> currentAggregationColumns = new List<string>();
+                List<string> currentAggregationSums = new List<string>();
+                string currentPostFilterColumn = string.Empty;
+                string currentPostFilterComparison = string.Empty;
+                List<string> currentPostFilterValues = new List<string>();
+                CriteriaSet criteria = new CriteriaSet();
+
+                foreach (string line in File.ReadLines(_criteriaSetPath))
                 {
-                    line = line.Replace(" ", string.Empty);
-
-                    if (line == "[")
+                    if (!RegexCommentLine.IsMatch(line) && RegexOperationLine.IsMatch(line))
                     {
-                        criteriaLineNumber = lineNumber;
-                        set = new List<string>();
+                        currentOperation = line[0]; // Get current operation
 
-                        while (!(line = sr.ReadLine()).Contains("]"))
+                        if (currentOperation == '!')
                         {
-                            set.Add(CleanLine(line)); // Add clean line to set
+                            if (count > 0)
+                            {
+                                criteria.PostFilter = new Tuple<string, string, List<string>>(currentPostFilterColumn, currentPostFilterComparison, currentPostFilterValues); // Store Post Filter
+                                _criteriaSets.Add(criteria); // Add previous criteria set
+                            }
+
+                            /* Start criteria set */
+                            criteria = new CriteriaSet();
+                            criteria.Name = (line.Contains(":")) ? (line.Substring((line.IndexOf(':') + 1)).Trim()) : (line.Substring(1));
+                            criteria.Number = ++count;
+
+                            /* Setup/Reset Variables */
+                            currentPreFilterColumn = string.Empty;
+                            currentPreFilterComparison = string.Empty;
+                            currentPreFilterValues = new List<string>();
+                            preFilters = new List<Tuple<string, string, List<string>>>();
+                            currentAggregationColumns = new List<string>();
+                            currentAggregationSums = new List<string>();
+                            currentPostFilterColumn = string.Empty;
+                            currentPostFilterComparison = string.Empty;
+                            currentPostFilterValues = new List<string>();
                         }
-
-                        if (set.Count != 3)
+                        else if (currentOperation == '@')
                         {
-                            MessageBox.Show("The criteria set outlined on line " + (criteriaLineNumber + 1) + " contains too many or too few lines.", "Criteria Set Error");
-                            return false;
+                            if (previousOperation != '!')
+                            {
+                                preFilters.Add(new Tuple<string, string, List<string>>(currentPreFilterColumn, currentPreFilterComparison, currentPreFilterValues)); // Add previous filter
+                                currentPreFilterColumn = string.Empty;
+                                currentPreFilterComparison = string.Empty;
+                                currentPreFilterValues = new List<string>();
+                            }
+                            currentPreFilterColumn = line.Substring(1); // Save Pre Filter Column
                         }
-
-                        if (VerifyCriteriaSetFormat(set, (criteriaLineNumber + 1)))
+                        else if (currentOperation == '^')
                         {
-                            CriteriaSet criteria = new CriteriaSet(set);
-                            _criteriaSets.Add(criteria);
-                            lineNumber += 5;
+                            currentPreFilterComparison = line.Substring(1); // Save Pre Filter Comparison
+                        }
+                        else if (currentOperation == '*')
+                        {
+                            if (previousOperation != '*')
+                            {
+                                preFilters.Add(new Tuple<string, string, List<string>>(currentPreFilterColumn, currentPreFilterComparison, currentPreFilterValues)); // Add last filter
+                                criteria.PreFilters = preFilters; // Store last Pre Filter
+                            }
+                            currentAggregationColumns.Add(line.Substring(1)); // Save Aggregated Column
+                        }
+                        else if (currentOperation == '+')
+                        {
+                            if (previousOperation != '+')
+                            {
+                                criteria.AggregationColumns = currentAggregationColumns; // Store Aggregated Columns
+                            }
+                            currentAggregationSums.Add(line.Substring(1)); // Save Aggregated Sum
+                        }
+                        else if (currentOperation == '$')
+                        {
+                            criteria.AggregationSums = currentAggregationSums; // Store Aggregated Sums
+                            currentPostFilterColumn = line.Substring(1); // Save Post Filter Column
+                        }
+                        else if (currentOperation == '&')
+                        {
+                            currentPostFilterComparison = line.Substring(1); // Save Post Filter Comparison
                         }
                         else
                         {
-                            return false;
+                            if (previousOperation == '^')
+                            {
+                                currentPreFilterValues.Add(line.Substring(1)); // Save Pre Filter Value
+                            }
+                            else
+                            {
+                                currentPostFilterValues.Add(line.Substring(1)); // Save Post Filter Value
+                            }
+                        }
+
+                        if (currentOperation != '#')
+                        {
+                            previousOperation = currentOperation;
                         }
                     }
-                    else
-                    {
-                        lineNumber++;
-                    }
                 }
-            }
 
-            if (_criteriaSets.Count > 0)
-            {
+                criteria.PostFilter = new Tuple<string, string, List<string>>(currentPostFilterColumn, currentPostFilterComparison, currentPostFilterValues); // Store Post Filter
+                _criteriaSets.Add(criteria);
+
                 return true;
             }
-            else
+            catch
             {
-                MessageBox.Show("No criteria sets were found. Check the file or try a new one.", "Criteria Set Error");
+                MessageBox.Show("Error while reading in criteria sets. Please check your file and try again.", "Criteria Set Read Error");
                 return false;
             }
         }
@@ -179,50 +253,6 @@ namespace StockMarketAnalysis
                 }
 
                 _data.Enqueue(new Tuple<List<string>, Operation>(lines, Operation.PreFilter));
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Takes a line and removes tab characters and unnecessary spaces.
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns>The cleaned line</returns>
-        private string CleanLine(string line)
-        {
-            line = Regex.Replace(line, @"\s*\,\s*", ","); // Remove unnecessary spaces by ,
-            line = Regex.Replace(line, @"\s*\|\s*", "|"); // Remove unnecessary spaces by |
-            line = Regex.Replace(line, @"[\t]", string.Empty); // Remove tab characters
-            line = line.Trim();
-
-            return line;
-        }
-
-        /// <summary>
-        /// Check each line of the set to verify formats.
-        /// </summary>
-        /// <param name="set">List of lines of the set</param>
-        /// <param name="criteriaLineNumber">Line number where the criteria set was created</param>
-        /// <returns>Whether the criteria set is valid for object creation</returns>
-        private bool VerifyCriteriaSetFormat(List<string> set, int criteriaLineNumber)
-        {            
-            if (!Regex.Match(set[0], @"^[a-zA-Z0-9\s]+(\,[a-zA-Z0-9\s]+)*\|((Preffered)|(Common))\|((Long)|(Short))$").Success)
-            {
-                MessageBox.Show("Invalid Pre-Filtering Format on Line " + (criteriaLineNumber + 1) + ".", "Criteria Set Error");
-                return false;
-            }
-
-            if (!Regex.Match(set[1], @"^[a-zA-Z0-9]+(\,[a-zA-Z0-9]+)*\|[a-zA-Z0-9]+(\,[a-zA-Z0-9]+)*$").Success)
-            {
-                MessageBox.Show("Invalid Aggregation Format on Line " + (criteriaLineNumber + 2) + ".", "Criteria Set Error");
-                return false;
-            }
-
-            if (!Regex.Match(set[2], @"^[#$%][0-9]+(\,[#$%][0-9]+)*$").Success)
-            {
-                MessageBox.Show("Invalid Post-Filtering Format on Line " + (criteriaLineNumber + 3) + ".", "Criteria Set Error");
-                return false;
             }
 
             return true;

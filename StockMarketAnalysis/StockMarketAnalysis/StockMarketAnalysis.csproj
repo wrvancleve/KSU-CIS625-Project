@@ -83,7 +83,8 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="TestCriteriaSet.txt" />
+    <Content Include="Criteria sets 2.txt" />
+    <Content Include="Criteria sets.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

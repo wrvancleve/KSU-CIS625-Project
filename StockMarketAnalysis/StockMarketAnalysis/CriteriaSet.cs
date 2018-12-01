@@ -7,181 +7,55 @@ using System.Windows.Forms;
 
 namespace StockMarketAnalysis
 {
-    /// <summary>
-    /// Stock Type for the Pre-Filter
-    /// </summary>
-    public enum Type
-    {
-        Preferred,
-        Common
-    }
-
-    /// <summary>
-    /// Stock Position for the Pre-Filter
-    /// </summary>
-    public enum Position
-    {
-        Long,
-        Short
-    }
-
-    public enum Criteria
-    {
-        Percent,
-        Number,
-        Value
-    }
-
     public class CriteriaSet
     {
-        #region Pre-Filter
+        /// <summary>
+        /// Number of the criteria set
+        /// </summary>
+        public int Number { get; set; }
 
         /// <summary>
-        /// Country/Countries for the Pre-Filter
+        /// Name of the criteria set
         /// </summary>
-        private List<string> _countries = new List<string>();
+        public string Name { get; set; }
 
         /// <summary>
-        /// Type of stock
+        /// List of the Pre Filters of the criteria set.
+        /// 
+        /// Each Tuple Represents a Different Pre Filter.
+        /// 
+        /// Each Pre Filter Has:
+        ///     (string) Item1 = Column Name
+        ///     (string) Item2 = Comparison Type
+        ///     (List<string>) Item3 = List of Values
         /// </summary>
-        private Type _type;
-        
-        /// <summary>
-        /// Position of stock
-        /// </summary>
-        private Position _position;
-
-        #endregion 
-
-        #region Aggregation
+        public List<Tuple<string, string, List<string>>> PreFilters { get; set; }
 
         /// <summary>
-        /// Could be a combination of StockCode, Stocktype, etc.
-        /// Example: SGQNS~Preferred
+        /// Aggregation columns of the criteria set
         /// </summary>
-        private List<string> _aggregationKey = new List<string>();
+        public List<string> AggregationColumns { get; set; }
 
         /// <summary>
-        /// Could be the number of shares held, or percentage of total shares held.
+        /// Aggregation sums of the criteria set
         /// </summary>
-        private List<string> _aggregationSum = new List<string>();
-
-        #endregion
-
-        #region Post-Filter
+        public List<string> AggregationSums { get; set; }
 
         /// <summary>
-        /// Holds the Criteria, threshold OR percentage
+        /// Post Filter of the criteria set.
+        /// 
+        /// The Post Filter Has:
+        ///     (string) Item1 = Column Name
+        ///     (string) Item2 = Comparison Type
+        ///     (List<string>) Item3 = List of Values
         /// </summary>
-        private List<Tuple<Criteria, double>> _postFilters = new List<Tuple<Criteria, double>>();
+        public Tuple<string, string, List<string>> PostFilter { get; set; }
 
-        #endregion
-            
-        public CriteriaSet(List<string> set)
+        public CriteriaSet()
         {
-            GetPreFilters(set[0]);
-            GetAggregates(set[1]);
-            GetPostFilters(set[2]);
-        }
-
-        private void GetPreFilters(string line)
-        {
-            string[] parts = line.Split('|');
-            for (int i = 0; i < 3; i++)
-            {
-                if (i == 0)
-                {
-                    string[] countries = parts[0].Split(',');
-                    foreach (string country in countries)
-                    {
-                        _countries.Add(country);
-                    }
-                }
-                else if (i == 1)
-                {
-                    if (parts[1].Equals("Short"))
-                    {
-                        this._position = Position.Short;
-                    }
-                    else
-                    {
-                        this._position = Position.Long;
-                    }
-                }
-                else
-                {
-                    if (parts[2].Equals("Preferred"))
-                    {
-                        this._type = Type.Preferred;
-                    }
-                    else
-                    {
-                        this._type = Type.Common;
-                    }
-                }
-            }
-        }
-
-        private void GetAggregates(string line)
-        {
-            string[] parts = line.Split('|');
-
-            if (parts[0].Contains(','))
-            {
-                string[] keys = parts[0].Split(',');
-                for (int i = 0; i < keys.Length; i++)
-                {
-                    _aggregationKey.Add(keys[i]);
-                }
-            }
-            else
-            {
-                _aggregationKey.Add(parts[0]);
-            }
-
-            if (parts[1].Contains(','))
-            {
-                string[] aggregates = parts[1].Split(',');
-                for (int j = 0; j < aggregates.Length; j++)
-                {
-                    _aggregationSum.Add(aggregates[j]);
-                }
-            }
-            else
-            {
-                _aggregationSum.Add(parts[1]);
-            }
-        }
-
-        private void GetPostFilters(string line)
-        {
-            string[] parts; // Create parts array
-
-            if (line.Contains(','))
-            {
-                parts = line.Split(','); // Split into parts
-            }
-            else
-            {
-                parts = new string[1];
-                parts[0] = line; // Make one part
-            }
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                if (parts[i][0] == '#')
-                {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Number, Convert.ToDouble(parts[i].Substring(1))));
-                }
-                else if (parts[i][0] == '$')
-                {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Value, Convert.ToDouble(parts[i].Substring(1))));
-                }
-                else
-                {
-                    _postFilters.Add(new Tuple<Criteria, double>(Criteria.Percent, Convert.ToDouble(parts[i].Substring(1))));
-                }
-            }
+            PreFilters = new List<Tuple<string, string, List<string>>>();
+            AggregationColumns = new List<string>();
+            AggregationSums = new List<string>();
         }
     }
 }
