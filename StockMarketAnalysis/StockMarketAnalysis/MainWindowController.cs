@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Collections.Concurrent;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace StockMarketAnalysis
 {
@@ -20,6 +22,11 @@ namespace StockMarketAnalysis
 
     public class MainWindowController
     {
+        /// <summary>
+        /// Connection string for sql server
+        /// </summary>
+        private const string ConnectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=U:\cis625\StockMarketAnalysis\StockMarketAnalysis\Database.mdf;Integrated Security=True";
+
         /// <summary>
         /// Regex for determining if a line is a comment line
         /// </summary>
@@ -83,7 +90,7 @@ namespace StockMarketAnalysis
         {
             _criteriaSetPath = directories[0];
             _dataSetPath = directories[1];
-            bool success = ObtainCriteriaSets(); //&& ObtainData();
+            bool success = ObtainCriteriaSets() && ProcessData();
             return success;
         }
 
@@ -218,8 +225,64 @@ namespace StockMarketAnalysis
         /// Obtains the data from the data files.
         /// </summary>
         /// <returns>Whether the data was obtained successfully</returns>
-        private bool ObtainData()
+        private bool ProcessData()
         {
+            /* Get list of files */
+            List<string> files = new List<string>();
+            string [] directories = Directory.GetFiles(_dataSetPath);
+            foreach (string directory in directories)
+            {
+                files.Add(directory);
+            }
+            files = files.OrderBy(x => Regex.Replace(x, @"\d+", match => match.Value.PadLeft(10, '0'))).ToList();
+
+            foreach (string file in files)
+            {
+                Parallel.ForEach(File.ReadLines(file), new ParallelOptions { MaxDegreeOfParallelism = 4 }, line =>
+                {
+                    using (SqlConnection conn = new SqlConnection())
+                    {
+                        conn.ConnectionString = ConnectionString;
+                        SqlCommand cmd = new SqlCommand("StockData.InsertRawData",conn);
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        string[] values = line.Split(',');
+
+                        for (int i = 0; i < values.Length; i++)
+                        {
+                            if (i == 0)
+                                cmd.Parameters.AddWithValue("StockCode", values[i]);
+                            else if (i == 1)
+                                cmd.Parameters.AddWithValue("StockType", values[i]);
+                            else if (i == 2)
+                                cmd.Parameters.AddWithValue("HolderId", values[i]);
+                            else if (i == 3)
+                                cmd.Parameters.AddWithValue("HolderCountry", values[i]);
+                            else if (i == 4)
+                                cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
+                            else if (i == 5)
+                                cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
+                            else if (i == 6)
+                                cmd.Parameters.AddWithValue("Direction", values[i]);
+                            else
+                                cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
+                        }
+
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                        conn.Close();
+                    }
+                });
+            }
+            
+            /*
+
+
+
+
+
+
+
+
             int threadCount = Process.GetCurrentProcess().Threads.Count;
             ConcurrentBag<string> bag = new ConcurrentBag<string>();
             List<string> data = new List<string>();
@@ -254,6 +317,7 @@ namespace StockMarketAnalysis
 
                 _data.Enqueue(new Tuple<List<string>, Operation>(lines, Operation.PreFilter));
             }
+            */
 
             return true;
         }
