@@ -1,8 +1,10 @@
 use jwebster7;
 --create schema [StockData];
 
+drop table if exists [StockData].[RawData]
+
 -- holds data BEFORE pre-filtering
-create table [StockData].[Raw]
+create table [StockData].[RawData]
 (
 	DataId int not null identity(1,1) primary key clustered,
 	StockCode nvarchar(32) not null,
@@ -12,9 +14,12 @@ create table [StockData].[Raw]
 	SharesHeld float not null,
 	PercentageSharesHeld float not null,
 	Direction nvarchar(32) not null,
-	[Value] float not null, 
-	[Date] date not null
+	[Value] float not null
+	--[Date] date not null
 )
+
+-- Testing what's in the database
+-- select * from [StockData].[RawData]
 
 -- holds data AFTER pre-filtering
 create table [StockData].[PreFilteredData]
