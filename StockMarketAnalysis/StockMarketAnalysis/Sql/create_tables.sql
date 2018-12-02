@@ -1,6 +1,3 @@
-use jwebster7;
---create schema [StockData];
-
 drop table if exists [StockData].[RawData]
 
 -- holds data BEFORE pre-filtering

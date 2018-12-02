@@ -1,5 +1,3 @@
-use jwebster7;
-
 drop procedure if exists [StockData].[InsertRawData]
 go
 create procedure [StockData].[InsertRawData]
