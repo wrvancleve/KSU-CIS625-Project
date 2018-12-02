@@ -1,1 +1,1 @@
-create Schema StockData
+create Schema StockData;
