@@ -107,6 +107,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <DependentUpon>Database.mdf</DependentUpon>
     </Content>
+    <Content Include="Sql\create_schema.sql" />
+    <Content Include="Sql\create_tables.sql" />
+    <Content Include="Sql\stored_procedures.sql" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.6.1">
