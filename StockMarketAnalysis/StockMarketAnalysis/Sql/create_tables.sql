@@ -1,4 +1,14 @@
-DROP table if exists [StockData].[RawData]
+/* Authors: William Van Cleve, Thomas Rolston, Joseph Webster
+ * Date: December 7th, 2018
+ * Professor: Dr. Daniel Andresen
+ * Course: CIS 625 | Concurrent Systems
+ * Stock Market Analysis Optimization
+ */
+DROP table if exists [StockData].[RawData];
+DROP table if exists [StockData].[PreFilteredData];
+DROP table if exists [StockData].[CurrentAggregateData];
+DROP table if exists [StockData].[PreviousAggregateData];
+DROP table if exists [StockData].[MaxAggregateData];
 
 -- holds data BEFORE pre-filtering
 create table [StockData].[RawData]
@@ -31,18 +41,7 @@ create table [StockData].[PreFilteredData]
 	PercentageSharesHeld float not null,
 	Direction nvarchar(32) not null,
 	[Value] float not null, 
-	[Date] date not null
-)
-
--- holds the previous days data AFTER aggregation
-create table [StockData].[PreviousAggregateData]
-(
-	PreviousAggregateId int not null identity(1,1) primary key clustered,
-	CriteriaSetId int not null,
-	AggregateKey nvarchar(32) not null,
-	AggregateSharesHeld float not null,
-	AggregatePercentageSharesHeld float not null, 
-	AggregateValue float not null
+	[Date] datetimeoffset null
 )
 
 -- holds the current data AFTER aggregation
@@ -54,6 +53,17 @@ create table [StockData].[CurrentAggregateData]
 	AggregateSharesHeld float not null,
 	AggregatePercentageSharesHeld float not null, 
 	AggregateValue float not null	
+)
+
+-- holds the previous days data AFTER aggregation
+create table [StockData].[PreviousAggregateData]
+(
+	PreviousAggregateId int not null identity(1,1) primary key clustered,
+	CriteriaSetId int not null,
+	AggregateKey nvarchar(32) not null,
+	AggregateSharesHeld float not null,
+	AggregatePercentageSharesHeld float not null, 
+	AggregateValue float not null
 )
 
 -- stores the results of Max (sharesheld, value of shares, percentage held)
