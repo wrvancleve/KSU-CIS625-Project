@@ -16,9 +16,9 @@ values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @Percenta
 go
 
 /* Insert Prefiltered Data */
-drop procedure if exists [StockData].[InsertPreFilteredData]
+drop procedure if exists [StockData].[PreFilterData]
 go
-create procedure [StockData].[InsertPrefilteredData]
+create procedure [StockData].[PreFilterData]
 	@CriteriaSetId int,
 	@StockCode nvarchar(32),
 	@StockType nvarchar(32),
