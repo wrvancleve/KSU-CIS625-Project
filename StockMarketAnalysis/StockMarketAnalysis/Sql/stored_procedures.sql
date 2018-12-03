@@ -14,12 +14,12 @@ create procedure [StockData].[InsertRawData]
 	@HolderId nvarchar(32),
 	@HolderCountry nvarchar(32),
 	@SharesHeld float,
-	@PercentageSharedHeld float,
+	@PercentageSharesHeld float,
 	@Direction nvarchar(32),
 	@Value float
 as
 insert [StockData].[RawData](StockCode, StockType, HolderId, HolderCountry, SharesHeld, PercentageSharesHeld, Direction, [Value])
-values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharedHeld, @Direction, @Value)
+values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharesHeld, @Direction, @Value)
 go
 
 /* Get the data from RawData that meets the condition of the pre-filter and put it into PreFilteredData */
