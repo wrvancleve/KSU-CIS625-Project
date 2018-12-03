@@ -1,4 +1,4 @@
-drop table if exists [StockData].[RawData]
+DROP table if exists [StockData].[RawData]
 
 -- holds data BEFORE pre-filtering
 create table [StockData].[RawData]

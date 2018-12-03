@@ -1,4 +1,4 @@
-drop procedure if exists [StockData].[InsertRawData]
+DROP procedure if exists [StockData].[InsertRawData]
 go
 create procedure [StockData].[InsertRawData]
 	-- stockcode, stocktype, holderid, holercountry, sharesheld, percentagesharesheld, direction, value
@@ -7,12 +7,12 @@ create procedure [StockData].[InsertRawData]
 	@HolderId nvarchar(32),
 	@HolderCountry nvarchar(32),
 	@SharesHeld float,
-	@PercentageSharedHeld float,
+	@PercentageSharesHeld float,
 	@Direction nvarchar(32),
 	@Value float
 as
 insert [StockData].[RawData](StockCode, StockType, HolderId, HolderCountry, SharesHeld, PercentageSharesHeld, Direction, [Value])
-values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharedHeld, @Direction, @Value)
+values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharesHeld, @Direction, @Value)
 go
 
 /* Insert Prefiltered Data */
@@ -30,7 +30,7 @@ create procedure [StockData].[InsertPrefilteredData]
 	@Value float
 as 
 insert [StockData].[PreFilteredData](CriteriaSetId, StockCode, StockType, HolderId, HolderCountry, SharesHeld, PercentageSharesHeld, Direction, [Value])
-values(@CriteriaSetId, @StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharedHeld, @Direction, @Value)
+values(@CriteriaSetId, @StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharesHeld, @Direction, @Value)
 go 
 
 /* Insert Previous Aggregate Data */
@@ -72,5 +72,5 @@ create procedure [StockData].[InsertMaxAggregateData]
 	@AggregateValue float
 as 
 insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
+values (@CriteriaSetId, @AggregateKey, @AggregateSharesHeld, @AggregatePercentageSharesHeld, @AggregateValue)
 go
