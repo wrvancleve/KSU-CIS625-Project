@@ -243,43 +243,82 @@ namespace StockMarketAnalysis
             }
             */
 
-            Parallel.ForEach(File.ReadLines(files[0]), new ParallelOptions { MaxDegreeOfParallelism = 4 }, line =>
-            {
-                if (!line.Contains("stockcode"))
+
+
+            Parallel.ForEach (
+                File.ReadLines(files[0]),
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
                 {
-                    using (SqlConnection conn = new SqlConnection())
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conn.Open();
+
+                    return new { Conn = conn, Cmd = cmd };
+                },
+                (line, unused, local) =>
+                {
+                    if (!line.Contains("stockcode") && !String.IsNullOrWhiteSpace(line))
                     {
-                        conn.ConnectionString = ConnectionString;
-                        SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
-                        cmd.CommandType = CommandType.StoredProcedure;
                         string[] values = line.Split(',');
 
                         for (int i = 0; i < values.Length; i++)
                         {
                             if (i == 0)
-                                cmd.Parameters.AddWithValue("StockCode", values[i]);
+                                local.Cmd.Parameters.AddWithValue("StockCode", values[i]);
                             else if (i == 1)
-                                cmd.Parameters.AddWithValue("StockType", values[i]);
+                                local.Cmd.Parameters.AddWithValue("StockType", values[i]);
                             else if (i == 2)
-                                cmd.Parameters.AddWithValue("HolderId", values[i]);
+                                local.Cmd.Parameters.AddWithValue("HolderId", values[i]);
                             else if (i == 3)
-                                cmd.Parameters.AddWithValue("HolderCountry", values[i]);
+                                local.Cmd.Parameters.AddWithValue("HolderCountry", values[i]);
                             else if (i == 4)
-                                cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
+                                local.Cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
                             else if (i == 5)
-                                cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
+                                local.Cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
                             else if (i == 6)
-                                cmd.Parameters.AddWithValue("Direction", values[i]);
+                                local.Cmd.Parameters.AddWithValue("Direction", values[i]);
                             else
-                                cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
+                                local.Cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
                         }
 
-                        conn.Open();
-                        cmd.ExecuteNonQuery();
-                        conn.Close();
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
                     }
+
+                    return local;
+                },
+                (conn) =>
+                {
+                    conn.Cmd.Dispose();
+                    conn.Conn.Dispose();
                 }
-            });
+            );
+
+            Parallel.ForEach (
+                _criteriaSets,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
+                {
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conn.Open();
+
+                    return new { Conn = conn, Cmd = cmd };
+                },
+                (criteria, unused, local) =>
+                {
+                    local.Cmd.Parameters.AddWithValue("HolderCountries", String.Join(",", criteria.PreFilters.))
+                },
+                (local) =>
+                {
+
+                }
+            );
 
             /*
 

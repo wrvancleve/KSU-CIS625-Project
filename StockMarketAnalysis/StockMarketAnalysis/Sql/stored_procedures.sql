@@ -7,18 +7,18 @@ create procedure [StockData].[InsertRawData]
 	@HolderId nvarchar(32),
 	@HolderCountry nvarchar(32),
 	@SharesHeld float,
-	@PercentageSharedHeld float,
+	@PercentageSharesHeld float,
 	@Direction nvarchar(32),
 	@Value float
 as
 insert [StockData].[RawData](StockCode, StockType, HolderId, HolderCountry, SharesHeld, PercentageSharesHeld, Direction, [Value])
-values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharedHeld, @Direction, @Value)
+values(@StockCode, @StockType, @HolderId, @HolderCountry, @SharesHeld, @PercentageSharesHeld, @Direction, @Value)
 go
 
 /* Insert Prefiltered Data */
-drop procedure if exists [StockData].[PreFilterData]
+drop procedure if exists [StockData].[GetPreFilterData]
 go
-create procedure [StockData].[PreFilterData]
+create procedure [StockData].[GetPreFilterData]
 	@CriteriaSetId int,
 	@StockCode nvarchar(32),
 	@StockType nvarchar(32),
