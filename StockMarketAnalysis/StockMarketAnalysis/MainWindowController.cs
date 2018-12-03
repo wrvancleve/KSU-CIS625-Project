@@ -240,36 +240,39 @@ namespace StockMarketAnalysis
             {
                 Parallel.ForEach(File.ReadLines(file), new ParallelOptions { MaxDegreeOfParallelism = 4 }, line =>
                 {
-                    using (SqlConnection conn = new SqlConnection())
+                    if (!line.Contains("stockcode"))
                     {
-                        conn.ConnectionString = ConnectionString;
-                        SqlCommand cmd = new SqlCommand("StockData.InsertRawData",conn);
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        string[] values = line.Split(',');
-
-                        for (int i = 0; i < values.Length; i++)
+                        using (SqlConnection conn = new SqlConnection())
                         {
-                            if (i == 0)
-                                cmd.Parameters.AddWithValue("StockCode", values[i]);
-                            else if (i == 1)
-                                cmd.Parameters.AddWithValue("StockType", values[i]);
-                            else if (i == 2)
-                                cmd.Parameters.AddWithValue("HolderId", values[i]);
-                            else if (i == 3)
-                                cmd.Parameters.AddWithValue("HolderCountry", values[i]);
-                            else if (i == 4)
-                                cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
-                            else if (i == 5)
-                                cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
-                            else if (i == 6)
-                                cmd.Parameters.AddWithValue("Direction", values[i]);
-                            else
-                                cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
-                        }
+                            conn.ConnectionString = ConnectionString;
+                            SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            string[] values = line.Split(',');
 
-                        conn.Open();
-                        cmd.ExecuteNonQuery();
-                        conn.Close();
+                            for (int i = 0; i < values.Length; i++)
+                            {
+                                if (i == 0)
+                                    cmd.Parameters.AddWithValue("StockCode", values[i]);
+                                else if (i == 1)
+                                    cmd.Parameters.AddWithValue("StockType", values[i]);
+                                else if (i == 2)
+                                    cmd.Parameters.AddWithValue("HolderId", values[i]);
+                                else if (i == 3)
+                                    cmd.Parameters.AddWithValue("HolderCountry", values[i]);
+                                else if (i == 4)
+                                    cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
+                                else if (i == 5)
+                                    cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
+                                else if (i == 6)
+                                    cmd.Parameters.AddWithValue("Direction", values[i]);
+                                else
+                                    cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
+                            }
+
+                            conn.Open();
+                            cmd.ExecuteNonQuery();
+                            conn.Close();
+                        }
                     }
                 });
             }
