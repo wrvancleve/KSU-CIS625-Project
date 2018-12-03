@@ -40,9 +40,9 @@ create table [StockData].[PreviousAggregateData]
 	PreviousAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
 	AggregateKey nvarchar(32) not null,
-	AggregatredSharesHeld float not null,
-	AggregatedPercentageSharesHeld float not null, 
-	AggregatedValue float not null
+	AggregateSharesHeld float not null,
+	AggregatePercentageSharesHeld float not null, 
+	AggregateValue float not null
 )
 
 -- holds the current data AFTER aggregation
@@ -51,9 +51,9 @@ create table [StockData].[CurrentAggregateData]
 	CurrentAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
 	AggregateKey nvarchar(32) not null,
-	AggregatredSharesHeld float not null,
-	AggregatedPercentageSharesHeld float not null, 
-	AggregatedValue float not null	
+	AggregateSharesHeld float not null,
+	AggregatePercentageSharesHeld float not null, 
+	AggregateValue float not null	
 )
 
 -- stores the results of Max (sharesheld, value of shares, percentage held)
@@ -62,7 +62,7 @@ create table [StockData].[MaxAggregateData]
 	MaxAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
 	AggregateKey nvarchar(32) not null,
-	AggregatredSharesHeld float not null,
-	AggregatedPercentageSharesHeld float not null, 
-	AggregatedValue float not null
+	AggregateSharesHeld float not null,
+	AggregatePercentageSharesHeld float not null, 
+	AggregateValue float not null
 )
