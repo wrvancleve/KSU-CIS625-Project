@@ -30,7 +30,7 @@ create procedure [StockData].[GetPreFilterData]
 	@HolderCountries nvarchar(128),
 	@StockType nvarchar(32),
 	@Direction nvarchar(32)
-as 
+AS
 insert into [StockData].[PreFilteredData](CriteriaSetId, StockCode, StockType, HolderId, HolderCountry, SharesHeld, PercentageSharesHeld, Direction, Value)
 select @CriteriaSetId as CriteriaSetId,
 	RD.StockCode as [StockCode],
@@ -42,18 +42,17 @@ select @CriteriaSetId as CriteriaSetId,
 	RD.Direction as [Direction], 
 	RD.Value as [Value]
 from [StockData].[RawData] as RD
-where charindex(RD.HolderCountry, @HolderCountries) > 0 and 
-	RD.StockType = @StockType and 
-	RD.Direction = @Direction
+where 
+	(@HolderCountries = "null" OR CHARINDEX(HolderCountry, @HolderCountries) > 0)
+	AND (@StockType = "null" OR RD.StockType = @StockType)
+	and (@Direction = "null" OR RD.Direction = @Direction)
 go 
-
-exec StockData.GetPreFilterData 1, 'Japan', 'Common', 'Preferred'
-go
 
 /* Insert Current Aggregate Data */
 drop procedure if exists [StockData].[GetAggregateData]
 go
 create procedure [StockData].[GetAggregateData]
+	@CriteriaSetId int,
 	@AggregateKey nvarchar(32)
 as 
 insert [StockData].[CurrentAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
