@@ -94,3 +94,23 @@ as
 insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
 values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
 go
+
+/* NOT FINISHED */
+/* Trigger to insert Max Aggregate Data */
+drop trigger if exists [StockData].[UpdateMaxAggregateData]
+go
+
+create trigger [StockData].[UpdateMaxAggregateData] on [StockData].[CurrentAggregateData]
+-- may need to be after insert
+after insert, update 
+as 
+
+if update(AggregateSharesHeld) or update(AggregatePercentageSharesHeld) or update(AggregateValue)
+	-- here we need to replaces values in the PreviousAggregateData table if they reached certain thresh holds. 
+insert [StockData].[MaxAggregateData]()
+select CAD.CriteriaSetId as [CriteriaSetId],
+	CAD.AggregateSharesHeld as [AggregateShareHeld],
+	CAD.AggregatePercentageSharesHeld as [AggregatePercentageSharesHeld],
+	CAD.AggregateValue as [AggregateValue]
+from [StockData].[CurrentAggregateData] as CAD
+-- go?
