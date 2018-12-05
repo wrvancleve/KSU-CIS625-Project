@@ -110,48 +110,41 @@ go
 drop trigger if exists [StockData].[UpdateMaxAggregateData]
 go
 
-create trigger [StockData].[UpdateMaxAggregateData] on [StockData].[CurrentAggregateData]
+create trigger [StockData].[UpdateMaxAggregateData] on [StockData].[MaxAggregateData]
 -- may need to be after insert
-after insert, update 
-as 
+after insert
+as
+if exists 
+	(
+		select MAD.CriteriaSetId as [CriteriaSetId],
+			MAD.AggregateKey as [AggregateKey]
+		from [StockData].[MaxAggregateData] as MAD
+		intersect 
+			select i.CriteriaSetId as [CriteriaSetId],
+				i.AggregateKey as [AggregateKey]
+			from inserted as i
+	)
+begin
+	Insert [StockData].[MaxAggregateData]
+	select CriteriaSetId, AggregateKey, MaxAggregateSharesHeld, MaxAggregatePercentageSharesHeld, MaxAggregateValue
+	from 
+	(
+		Select I.CriteriaSetId, I.AggregateKey, I.AggregateSharesHeld, I.AggregatePercentageSharesHeld, I.AggregateValue
+		from inserted i
+		union all
+		Select MAD.CriteriaSetId, MAD.AggregateKey, MAD.AggregateSharesHeld, MAD.AggregatePercentageSharesHeld, MAD.AggregateValue
+		from [StockData].[MaxAggregateData] MAD
+	) as MaxValues(CriteriaSetId, AggregateKey, MaxAggregateSharesHeld, MaxAggregatePercentageSharesHeld, MaxAggregateValue)
+end
 
-if update(AggregateSharesHeld) or update(AggregatePercentageSharesHeld) or update(AggregateValue)
-	-- here we need to replaces values in the PreviousAggregateData table if they reached certain thresh holds. 
-insert [StockData].[MaxAggregateData]()
-select CAD.CriteriaSetId as [CriteriaSetId],
-	CAD.AggregateSharesHeld as [AggregateShareHeld],
-	CAD.AggregatePercentageSharesHeld as [AggregatePercentageSharesHeld],
-	CAD.AggregateValue as [AggregateValue]
-from [StockData].[CurrentAggregateData] as CAD
--- go?
-
--- old procedures
-/*
-/* Insert Current Aggregate Data */
-drop procedure if exists [StockData].[InsertCurrentAggregateData]
-go
-create procedure [StockData].[InsertCurrentAggregateData]
-	@CriteriaSetId int,
-	@AggregateKey nvarchar(32),
-	@AggregateSharesHeld float,
-	@AggregatePercentageSharesHeld float, 
-	@AggregateValue float
-as 
-insert [StockData].[CurrentAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
-go
-
-/* Insert Max Aggregate Data */
-drop procedure if exists [StockData].[GetMaxAggregateData]
-go
-create procedure [StockData].[GetMaxAggregateData]
-	@CriteriaSetId int,
-	@AggregateKey nvarchar(32),
-	@AggregateSharesHeld float,
-	@AggregatePercentageSharesHeld float, 
-	@AggregateValue float
-as 
-insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
-go
-*/
+else
+	
+begin
+	insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
+	select i.CriteriaSetId as [CriteriaSetId],
+		i.AggregateKey as [AggregateKey],
+		i.AggregateSharesHeld as [AggregateSharesHeld],
+		i.AggregatePercentageSharesHeld as [AggregatePercentageSharesHeld],
+		i.AggregateValue as [AggregateValue]
+	from inserted as i
+end
