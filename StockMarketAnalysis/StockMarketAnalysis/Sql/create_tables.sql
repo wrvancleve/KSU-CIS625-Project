@@ -41,7 +41,7 @@ create table [StockData].[PreFilteredData]
 	PercentageSharesHeld float not null,
 	Direction nvarchar(32) not null,
 	[Value] float not null, 
-	[Date] datetimeoffset null
+	--[Date] datetimeoffset null
 )
 
 -- holds the current data AFTER aggregation
@@ -49,7 +49,7 @@ create table [StockData].[CurrentAggregateData]
 (
 	CurrentAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
-	AggregateKey nvarchar(32) not null,
+	AggregateKey nvarchar(128) not null,
 	AggregateSharesHeld float not null,
 	AggregatePercentageSharesHeld float not null, 
 	AggregateValue float not null	

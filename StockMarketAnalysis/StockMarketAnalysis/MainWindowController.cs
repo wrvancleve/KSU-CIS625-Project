@@ -297,14 +297,14 @@ namespace StockMarketAnalysis
                 }
             );
 
-            Parallel.ForEach (
+            Parallel.ForEach(
                 _criteriaSets,
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
                 () =>
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
+                    SqlCommand cmd = new SqlCommand("StockData.GetPrefilterData", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
@@ -312,58 +312,55 @@ namespace StockMarketAnalysis
                 },
                 (criteria, unused, local) =>
                 {
-                    local.Cmd.Parameters.AddWithValue("HolderCountries", String.Join(",", criteria.PreFilters.))
-                },
-                (local) =>
-                {
+                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
 
+                    string countries = "null";
+                    string stockType = "null";
+                    string direction = "null";
+                    foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
+                    {
+                        if (preFilter.Item1.Equals("holdercountry"))
+                        {
+                            countries = String.Join(",", preFilter.Item3);
+                        }
+                        else if (preFilter.Item1.Equals("stocktype"))
+                        {
+                            if (preFilter.Item2.Equals("<>"))
+                            {
+                                stockType = preFilter.Item3[0].Equals("Preferred") ? "Common" : "Preferred";
+                            }
+                            else
+                            {
+                                stockType = preFilter.Item3[0];
+                            }
+                        }
+                        else
+                        {
+                            if (preFilter.Item2.Equals("<>"))
+                            {
+                                direction = preFilter.Item3[0].Equals("Long") ? "Short" : "Long";
+                            }
+                            else
+                            {
+                                direction = preFilter.Item3[0];
+                            }
+                        }
+                    }
+                    local.Cmd.Parameters.AddWithValue("HolderCountries", countries);
+                    local.Cmd.Parameters.AddWithValue("StockType", stockType);
+                    local.Cmd.Parameters.AddWithValue("Direction", direction);
+
+                    local.Cmd.ExecuteNonQuery();
+                    local.Cmd.Parameters.Clear();
+
+                    return local;
+                },
+                (conn) =>
+                {
+                    conn.Cmd.Dispose();
+                    conn.Conn.Dispose();
                 }
             );
-
-            /*
-
-
-
-
-
-
-
-
-            int threadCount = Process.GetCurrentProcess().Threads.Count;
-            ConcurrentBag<string> bag = new ConcurrentBag<string>();
-            List<string> data = new List<string>();
-
-            Parallel.ForEach(File.ReadLines(_dataSetPath), line =>
-            {
-                bag.Add(line);
-
-                // Add line to database
-            });
-
-            foreach (string s in bag)
-            {
-                data.Add(s);
-            }
-
-            int size = data.Count / threadCount;
-            int remainder = data.Count % threadCount;            
-
-            for (int i = 0; i < threadCount; i++)
-            {
-                List<string> lines = new List<string>();
-                int start = i * size;
-                start = ((remainder == 0) ? (start) : ((i < remainder) ? (start + i) : (start + remainder))); // Adjust start postion based on remainders
-                int end = start + size;
-                end = ((remainder == 0 || i >= remainder) ? (start + size) : (start + size + 1)); // Gets end position from start postion and remainders
-
-                for (int j = start; j < end; j++)
-                {
-                    lines.Add(data[j]);
-                }
-
-                _data.Enqueue(new Tuple<List<string>, Operation>(lines, Operation.PreFilter));
-            }
-            */
 
             return true;
         }

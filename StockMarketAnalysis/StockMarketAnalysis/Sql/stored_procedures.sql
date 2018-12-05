@@ -43,9 +43,9 @@ select @CriteriaSetId as CriteriaSetId,
 	RD.Value as [Value]
 from [StockData].[RawData] as RD
 where 
-	(@HolderCountries = "null" OR CHARINDEX(HolderCountry, @HolderCountries) > 0)
-	AND (@StockType = "null" OR RD.StockType = @StockType)
-	and (@Direction = "null" OR RD.Direction = @Direction)
+	(@HolderCountries = 'null' OR CHARINDEX(HolderCountry, @HolderCountries) > 0)
+	AND (@StockType = 'null' OR RD.StockType = @StockType)
+	and (@Direction = 'null' OR RD.Direction = @Direction)
 go 
 
 /* Insert Current Aggregate Data */
@@ -53,31 +53,17 @@ drop procedure if exists [StockData].[GetAggregateData]
 go
 create procedure [StockData].[GetAggregateData]
 	@CriteriaSetId int,
-	@AggregateKey nvarchar(32)
-as 
+	@AggregateKeys nvarchar(128)
+AS
 insert [StockData].[CurrentAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-select PDF.CriteriaSetId as [CriteriaSetId],
-	concat(@AggregateKey) as [AggregateKey], -- concatenates the two strings
-	sum(PDF.SharesHeld) as [AggregateSharesHeld],
-	sum(PDF.PercentageSharesHeld) as [AggregatePercentageSharesHeld],
-	sum(PDF.[Value]) as [AggregateValue]
+select PFD.CriteriaSetId as [CriteriaSetId],
+	REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction) AS [AggregateKey],
+	sum(PFD.SharesHeld) as [AggregateSharesHeld],
+	sum(PFD.PercentageSharesHeld) as [AggregatePercentageSharesHeld],
+	sum(PFD.[Value]) as [AggregateValue]
 from [StockData].[PreFilteredData] as PFD
 -- the SQL in the where statement may need to be moved to a HAVING clause
-where concat(PFD.HolderId, '~', PFD.Direction) = @AggregateKey or
-	concat(PFD.HolderId, '~', PFD.StockCode) = @AggregateKey or
-	concat(PFD.HolderId, '~', PFD.StockType) = @AggregateKey or
-
-	concat(PFD.Direction, '~', PFD.HolderId) = @AggregateKey or
-	concat(PFD.Direction, '~', PFD.StockCode) = @AggregateKey or
-	concat(PFD.Direction, '~', PFD.StockType) = @AggregateKey or
-
-	concat(PFD.StockCode, '~', PFD.HolderId) = @AggregateKey or
-	concat(PFD.StockCode, '~', PFD.Direction) = @AggregateKey or
-	concat(PFD.StockCode, '~', PFD.StockType) = @AggregateKey or
-
-	concat(PFD.StockType, '~', PFD.HolderId) = @AggregateKey or
-	concat(PFD.StockType, '~', PFD.Direction) = @AggregateKey or
-	concat(PFD.StockType, '~', PFD.StockCode) = @AggregateKey
+GROUP BY AggregateKey
 go
 
 /* Insert Current Aggregate Data */
