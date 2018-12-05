@@ -42,7 +42,7 @@ select @CriteriaSetId as CriteriaSetId,
 	RD.Direction as [Direction], 
 	RD.Value as [Value]
 from [StockData].[RawData] as RD
-where 
+where
 	(@HolderCountries = 'null' OR CHARINDEX(HolderCountry, @HolderCountries) > 0)
 	AND (@StockType = 'null' OR RD.StockType = @StockType)
 	and (@Direction = 'null' OR RD.Direction = @Direction)
