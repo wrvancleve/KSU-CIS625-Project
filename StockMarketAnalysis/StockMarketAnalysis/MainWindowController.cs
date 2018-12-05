@@ -243,8 +243,6 @@ namespace StockMarketAnalysis
             }
             */
 
-
-
             Parallel.ForEach (
                 File.ReadLines(files[0]),
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
@@ -354,11 +352,39 @@ namespace StockMarketAnalysis
                     local.Cmd.ExecuteNonQuery();
                     local.Cmd.Parameters.Clear();
 
-                    local.Cmd.CommandText = "StockData.GetAggregateData";
-                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                    local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                    local.Cmd.ExecuteNonQuery();
-                    local.Cmd.Parameters.Clear();
+                    if (files.IndexOf(file) == files.Count - 2) // Previous Day
+                    {
+                        local.Cmd.CommandText = "StockData.GetPreviousAggregateData"; // Previous Procedure
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+
+                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // Max Procedure
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+                    else if (files.IndexOf(file) == files.Count - 1) // Current Day
+                    {
+                        local.Cmd.CommandText = "StockData.GetCurrentAggregateData"; // Current Procedure
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+                    else
+                    {
+                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // History Procedure
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+
+                    /* Post Filter */
+
 
                     return local;
                 },
