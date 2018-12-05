@@ -49,9 +49,9 @@ where
 go 
 
 /* Insert Current Aggregate Data */
-drop procedure if exists [StockData].[GetAggregateData]
+drop procedure if exists [StockData].[GetCurrentAggregateData]
 go
-create procedure [StockData].[GetAggregateData]
+create procedure [StockData].[GetCurrentAggregateData]
 	@CriteriaSetId int,
 	@AggregateKeys nvarchar(128)
 AS
@@ -67,32 +67,42 @@ WHERE PFD.CriteriaSetId = @CriteriaSetId
 GROUP BY PFD.CriteriaSetId, REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction)
 go
 
-/* Insert Current Aggregate Data */
-drop procedure if exists [StockData].[InsertCurrentAggregateData]
+/* Get Previous Aggregate Data */
+drop procedure if exists [StockData].[GetPreviousAggregateData]
 go
-create procedure [StockData].[InsertCurrentAggregateData]
+create procedure [StockData].[GetPreviousAggregateData]
 	@CriteriaSetId int,
-	@AggregateKey nvarchar(32),
-	@AggregateSharesHeld float,
-	@AggregatePercentageSharesHeld float, 
-	@AggregateValue float
-as 
-insert [StockData].[CurrentAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
+	@AggregateKeys nvarchar(128)
+AS
+insert [StockData].[PreviousAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
+select PFD.CriteriaSetId as [CriteriaSetId],
+	REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction) AS [AggregateKey],
+	sum(PFD.SharesHeld) as [AggregateSharesHeld],
+	sum(PFD.PercentageSharesHeld) as [AggregatePercentageSharesHeld],
+	sum(PFD.[Value]) as [AggregateValue]
+from [StockData].[PreFilteredData] as PFD
+WHERE PFD.CriteriaSetId = @CriteriaSetId
+-- the SQL in the where statement may need to be moved to a HAVING clause
+GROUP BY PFD.CriteriaSetId, REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction)
 go
 
-/* Insert Max Aggregate Data */
-drop procedure if exists [StockData].[InsertMaxAggregateData]
+/* Get Max Aggregate Data */
+drop procedure if exists [StockData].[GetMaxAggregateData]
 go
-create procedure [StockData].[InsertMaxAggregateData]
+create procedure [StockData].[GetMaxAggregateData]
 	@CriteriaSetId int,
-	@AggregateKey nvarchar(32),
-	@AggregateSharesHeld float,
-	@AggregatePercentageSharesHeld float, 
-	@AggregateValue float
-as 
+	@AggregateKeys nvarchar(128)
+AS
 insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
-values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
+select PFD.CriteriaSetId as [CriteriaSetId],
+	REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction) AS [AggregateKey],
+	sum(PFD.SharesHeld) as [AggregateSharesHeld],
+	sum(PFD.PercentageSharesHeld) as [AggregatePercentageSharesHeld],
+	sum(PFD.[Value]) as [AggregateValue]
+from [StockData].[PreFilteredData] as PFD
+WHERE PFD.CriteriaSetId = @CriteriaSetId
+-- the SQL in the where statement may need to be moved to a HAVING clause
+GROUP BY PFD.CriteriaSetId, REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction)
 go
 
 /* NOT FINISHED */
@@ -114,3 +124,34 @@ select CAD.CriteriaSetId as [CriteriaSetId],
 	CAD.AggregateValue as [AggregateValue]
 from [StockData].[CurrentAggregateData] as CAD
 -- go?
+
+-- old procedures
+/*
+/* Insert Current Aggregate Data */
+drop procedure if exists [StockData].[InsertCurrentAggregateData]
+go
+create procedure [StockData].[InsertCurrentAggregateData]
+	@CriteriaSetId int,
+	@AggregateKey nvarchar(32),
+	@AggregateSharesHeld float,
+	@AggregatePercentageSharesHeld float, 
+	@AggregateValue float
+as 
+insert [StockData].[CurrentAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
+values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
+go
+
+/* Insert Max Aggregate Data */
+drop procedure if exists [StockData].[GetMaxAggregateData]
+go
+create procedure [StockData].[GetMaxAggregateData]
+	@CriteriaSetId int,
+	@AggregateKey nvarchar(32),
+	@AggregateSharesHeld float,
+	@AggregatePercentageSharesHeld float, 
+	@AggregateValue float
+as 
+insert [StockData].[MaxAggregateData](CriteriaSetId, AggregateKey, AggregateSharesHeld, AggregatePercentageSharesHeld, AggregateValue)
+values (@CriteriaSetId, @AggregateKey, @AggregateSharesheld, @AggregatePercentageSharesHeld, @AggregateValue)
+go
+*/
