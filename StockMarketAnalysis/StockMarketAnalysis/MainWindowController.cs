@@ -312,6 +312,7 @@ namespace StockMarketAnalysis
                 },
                 (criteria, unused, local) =>
                 {
+                    local.Cmd.CommandText = "StockData.GetPrefilterData";
                     local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
 
                     string countries = "null";
@@ -350,6 +351,12 @@ namespace StockMarketAnalysis
                     local.Cmd.Parameters.AddWithValue("StockType", stockType);
                     local.Cmd.Parameters.AddWithValue("Direction", direction);
 
+                    local.Cmd.ExecuteNonQuery();
+                    local.Cmd.Parameters.Clear();
+
+                    local.Cmd.CommandText = "StockData.GetAggregateData";
+                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                    local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
                     local.Cmd.ExecuteNonQuery();
                     local.Cmd.Parameters.Clear();
 

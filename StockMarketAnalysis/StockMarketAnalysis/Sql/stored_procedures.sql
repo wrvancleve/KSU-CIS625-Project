@@ -62,8 +62,9 @@ select PFD.CriteriaSetId as [CriteriaSetId],
 	sum(PFD.PercentageSharesHeld) as [AggregatePercentageSharesHeld],
 	sum(PFD.[Value]) as [AggregateValue]
 from [StockData].[PreFilteredData] as PFD
+WHERE PFD.CriteriaSetId = @CriteriaSetId
 -- the SQL in the where statement may need to be moved to a HAVING clause
-GROUP BY AggregateKey
+GROUP BY PFD.CriteriaSetId, REPLACE(REPLACE(REPLACE(REPLACE(@AggregateKeys, 'holderid', PFD.HolderId), 'stockcode', PFD.StockCode), 'stocktype', PFD.StockType), 'direction', PFD.Direction)
 go
 
 /* Insert Current Aggregate Data */

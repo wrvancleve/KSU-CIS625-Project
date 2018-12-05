@@ -60,7 +60,7 @@ create table [StockData].[PreviousAggregateData]
 (
 	PreviousAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
-	AggregateKey nvarchar(32) not null,
+	AggregateKey nvarchar(128) not null,
 	AggregateSharesHeld float not null,
 	AggregatePercentageSharesHeld float not null, 
 	AggregateValue float not null
@@ -71,7 +71,7 @@ create table [StockData].[MaxAggregateData]
 (
 	MaxAggregateId int not null identity(1,1) primary key clustered,
 	CriteriaSetId int not null,
-	AggregateKey nvarchar(32) not null,
+	AggregateKey nvarchar(128) not null,
 	AggregateSharesHeld float not null,
 	AggregatePercentageSharesHeld float not null, 
 	AggregateValue float not null
