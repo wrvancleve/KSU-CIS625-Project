@@ -11,7 +11,7 @@ namespace StockMarketAnalysis
     /// Delegate for the method that applys criteria sets to the data to be processed.
     /// </summary>
     /// <param name="directories">List containing the paths to the criteria set and data</param>
-    public delegate bool DataProcessing(List<string> directories);
+    public delegate bool DataProcessing(List<string> directories, bool isNew);
 
     static class Program
     {

@@ -53,16 +53,14 @@ namespace StockMarketAnalysis
         private string _dataSetPath;
 
         /// <summary>
+        /// Output path for the results.
+        /// </summary>
+        private string _outputPath;
+
+        /// <summary>
         /// List of criteria sets.
         /// </summary>
         private List<CriteriaSet> _criteriaSets = new List<CriteriaSet>();
-
-        /// <summary>
-        /// Queue to store our raw_data taken from pre-filtering;
-        /// Each index of the queue represents a row in the database;
-        /// Each index of the list represents a different column in each respective row.
-        /// </summary>
-        private Queue<Tuple<List<string>, Operation>> _data = new Queue<Tuple<List<string>, Operation>>();
 
         /// <summary>
         /// Constructs the controller.
@@ -86,11 +84,12 @@ namespace StockMarketAnalysis
         /// </summary>
         /// <param name="directories">List containing the paths to the criteria set and data</param>
         /// <returns>Whether the data was processed correctly</returns>
-        public bool Handle(List<string> directories)
+        public bool Handle(List<string> directories, bool isNew)
         {
             _criteriaSetPath = directories[0];
             _dataSetPath = directories[1];
-            bool success = ObtainCriteriaSets() && ProcessData();
+            _outputPath = directories[2];
+            bool success = ObtainCriteriaSets() && ProcessData(isNew);
             return success;
         }
 
@@ -225,26 +224,67 @@ namespace StockMarketAnalysis
         /// Obtains the data from the data files.
         /// </summary>
         /// <returns>Whether the data was obtained successfully</returns>
-        private bool ProcessData()
+        private bool ProcessData(bool isNew)
+        {
+            if (isNew)
+            {
+                ProcessDataNew();
+                return true;
+            }
+            else
+            {
+                ProcessDataHistory();
+                return true;
+            }
+        }
+
+        private void ProcessDataHistory()
         {
             /* Get list of files */
             List<string> files = new List<string>();
-            string [] directories = Directory.GetFiles(_dataSetPath);
+            string[] directories = Directory.GetFiles(_dataSetPath);
             foreach (string directory in directories)
             {
                 files.Add(directory);
             }
             files = files.OrderBy(x => Regex.Replace(x, @"\d+", match => match.Value.PadLeft(10, '0'))).ToList();
 
-            /*
             foreach (string file in files)
             {
-                
+                if (files.IndexOf(file) == files.Count - 1)
+                {
+                    ProcessFile(file); // Process file
+                    ProcessPreFilters(true); // Process prefilters with output
+                    ProcessAggregations(false, true); // Process aggregations with output
+                    ProcessPostFilters(); // Process postfilters with output
+                }
+                else if (files.IndexOf(file) == files.Count - 2)
+                {
+                    ProcessFile(file); // Process file
+                    ProcessPreFilters(false); // Process prefilters
+                    ProcessAggregations(true, false); // Process aggregations
+                }
+                else
+                {
+                    ProcessFile(file); // Process file
+                    ProcessPreFilters(false); // Process prefilters
+                    ProcessAggregations(false, false); // Process aggregations
+                }
             }
-            */
+        }
 
-            Parallel.ForEach (
-                File.ReadLines(files[0]),
+        private void ProcessDataNew()
+        {
+            ProcessFile(_dataSetPath); // Process new file
+            ProcessPreFilters(true); // Process prefilter
+            ProcessAggregations(false, true); // Process aggregations
+            ProcessPostFilters();
+        }
+
+        private void ProcessFile(string file)
+        {
+            Parallel.ForEach(
+                File.ReadLines(file),
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
                 () =>
                 {
@@ -262,24 +302,24 @@ namespace StockMarketAnalysis
                     {
                         string[] values = line.Split(',');
 
-                        for (int i = 0; i < values.Length; i++)
+                        for (int j = 0; j < values.Length; j++)
                         {
-                            if (i == 0)
-                                local.Cmd.Parameters.AddWithValue("StockCode", values[i]);
-                            else if (i == 1)
-                                local.Cmd.Parameters.AddWithValue("StockType", values[i]);
-                            else if (i == 2)
-                                local.Cmd.Parameters.AddWithValue("HolderId", values[i]);
-                            else if (i == 3)
-                                local.Cmd.Parameters.AddWithValue("HolderCountry", values[i]);
-                            else if (i == 4)
-                                local.Cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[i]));
-                            else if (i == 5)
-                                local.Cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[i]));
-                            else if (i == 6)
-                                local.Cmd.Parameters.AddWithValue("Direction", values[i]);
+                            if (j == 0)
+                                local.Cmd.Parameters.AddWithValue("StockCode", values[j]);
+                            else if (j == 1)
+                                local.Cmd.Parameters.AddWithValue("StockType", values[j]);
+                            else if (j == 2)
+                                local.Cmd.Parameters.AddWithValue("HolderId", values[j]);
+                            else if (j == 3)
+                                local.Cmd.Parameters.AddWithValue("HolderCountry", values[j]);
+                            else if (j == 4)
+                                local.Cmd.Parameters.AddWithValue("SharesHeld", Convert.ToDecimal(values[j]));
+                            else if (j == 5)
+                                local.Cmd.Parameters.AddWithValue("PercentageSharesHeld", Convert.ToDecimal(values[j]));
+                            else if (j == 6)
+                                local.Cmd.Parameters.AddWithValue("Direction", values[j]);
                             else
-                                local.Cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[i]));
+                                local.Cmd.Parameters.AddWithValue("Value", Convert.ToDecimal(values[j]));
                         }
 
                         local.Cmd.ExecuteNonQuery();
@@ -294,7 +334,10 @@ namespace StockMarketAnalysis
                     conn.Conn.Dispose();
                 }
             );
+        }
 
+        private void ProcessPreFilters(bool isOutput)
+        {
             Parallel.ForEach(
                 _criteriaSets,
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
@@ -310,12 +353,10 @@ namespace StockMarketAnalysis
                 },
                 (criteria, unused, local) =>
                 {
-                    local.Cmd.CommandText = "StockData.GetPrefilterData";
-                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-
                     string countries = "null";
                     string stockType = "null";
                     string direction = "null";
+
                     foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
                     {
                         if (preFilter.Item1.Equals("holdercountry"))
@@ -345,46 +386,18 @@ namespace StockMarketAnalysis
                             }
                         }
                     }
+
+                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
                     local.Cmd.Parameters.AddWithValue("HolderCountries", countries);
                     local.Cmd.Parameters.AddWithValue("StockType", stockType);
                     local.Cmd.Parameters.AddWithValue("Direction", direction);
-
                     local.Cmd.ExecuteNonQuery();
                     local.Cmd.Parameters.Clear();
 
-                    if (files.IndexOf(file) == files.Count - 2) // Previous Day
+                    if (isOutput)
                     {
-                        local.Cmd.CommandText = "StockData.GetPreviousAggregateData"; // Previous Procedure
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
 
-                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // Max Procedure
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
                     }
-                    else if (files.IndexOf(file) == files.Count - 1) // Current Day
-                    {
-                        local.Cmd.CommandText = "StockData.GetCurrentAggregateData"; // Current Procedure
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
-                    }
-                    else
-                    {
-                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // History Procedure
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
-                    }
-
-                    /* Post Filter */
-
 
                     return local;
                 },
@@ -394,8 +407,93 @@ namespace StockMarketAnalysis
                     conn.Conn.Dispose();
                 }
             );
+        }
 
-            return true;
+        private void ProcessAggregations(bool isPrevious, bool isCurrent)
+        {
+            Parallel.ForEach(
+                _criteriaSets,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
+                {
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    SqlCommand cmd = new SqlCommand("StockData.GetMaxAggregateData", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conn.Open();
+
+                    return new { Conn = conn, Cmd = cmd };
+                },
+                (criteria, unused, local) =>
+                {
+                    if (isPrevious || isCurrent) // Previous Day
+                    {
+                        local.Cmd.CommandText = isPrevious ? "StockData.GetPreviousAggregateData" : "StockData.GetCurrentAggregateData"; // Current or Previous Procedure
+                    }
+                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                    local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                    local.Cmd.ExecuteNonQuery();
+                    local.Cmd.Parameters.Clear();
+
+                    if (isPrevious)
+                    {
+                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // Max Procedure
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+                    else if (isCurrent)
+                    {
+                        // Output
+                    }
+
+                    return local;
+                },
+                (conn) =>
+                {
+                    conn.Cmd.Dispose();
+                    conn.Conn.Dispose();
+                }
+            );
+        }
+
+        private void ProcessPostFilters()
+        {
+            Parallel.ForEach(
+                _criteriaSets,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
+                {
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    SqlCommand cmd = new SqlCommand("StockData.GetPostfilterData", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conn.Open();
+
+                    return new { Conn = conn, Cmd = cmd };
+                },
+                (criteria, unused, local) =>
+                {
+                    // https://stackoverflow.com/questions/22176471/pass-liststring-into-sql-parameter
+                    foreach (string value in criteria.PostFilter.Item3)
+                    {
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.Parameters.AddWithValue("ColumnName", criteria.PostFilter.Item1);
+                        local.Cmd.Parameters.AddWithValue("Comparison", criteria.PostFilter.Item2);
+                        local.Cmd.Parameters.AddWithValue("Value", value);
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+
+                    return local;
+                },
+                (conn) =>
+                {
+                    conn.Cmd.Dispose();
+                    conn.Conn.Dispose();
+                }
+            );
         }
     }
 }
