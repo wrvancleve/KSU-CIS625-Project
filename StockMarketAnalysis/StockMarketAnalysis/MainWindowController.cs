@@ -251,34 +251,49 @@ namespace StockMarketAnalysis
 
             foreach (string file in files)
             {
+                InitDatabase(); // Clear raw data
                 if (files.IndexOf(file) == files.Count - 1)
                 {
                     ProcessFile(file); // Process file
                     ProcessPreFilters(true); // Process prefilters with output
-                    ProcessAggregations(false, true); // Process aggregations with output
+                    ProcessAggregations(false, true, false); // Process aggregations with output
                     ProcessPostFilters(); // Process postfilters with output
                 }
                 else if (files.IndexOf(file) == files.Count - 2)
                 {
                     ProcessFile(file); // Process file
                     ProcessPreFilters(false); // Process prefilters
-                    ProcessAggregations(true, false); // Process aggregations
+                    ProcessAggregations(true, false, false); // Process aggregations
                 }
                 else
                 {
                     ProcessFile(file); // Process file
                     ProcessPreFilters(false); // Process prefilters
-                    ProcessAggregations(false, false); // Process aggregations
+                    ProcessAggregations(false, false, false); // Process aggregations
                 }
             }
         }
 
         private void ProcessDataNew()
         {
+            InitDatabase(); // Clear raw data
             ProcessFile(_dataSetPath); // Process new file
             ProcessPreFilters(true); // Process prefilter
-            ProcessAggregations(false, true); // Process aggregations
+            ProcessAggregations(false, true, true); // Process aggregations
             ProcessPostFilters();
+        }
+
+        private void InitDatabase()
+        {
+            using (SqlConnection conn = new SqlConnection())
+            {
+                conn.ConnectionString = ConnectionString;
+                SqlCommand cmd = new SqlCommand("StockData.ClearRawData", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                conn.Open();
+                cmd.ExecuteNonQuery();
+                conn.Close();
+            }
         }
 
         private void ProcessFile(string file)
@@ -396,7 +411,32 @@ namespace StockMarketAnalysis
 
                     if (isOutput)
                     {
+                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PreFilteredData.txt");
+                        (new FileInfo(directory)).Directory.Create();
+                        using (StreamWriter writer = new StreamWriter(directory))
+                        {
+                            writer.WriteLine("stockcode,stocktype,holderid,holdercountry,sharesheld,percentagesharesheld,direction,value");
 
+                            using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    StringBuilder newLine = new StringBuilder();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        if (i != (reader.FieldCount - 1))
+                                        {
+                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                        else
+                                        {
+                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                    }
+                                    writer.WriteLine(newLine.ToString());
+                                }
+                            }
+                        }
                     }
 
                     return local;
@@ -409,7 +449,7 @@ namespace StockMarketAnalysis
             );
         }
 
-        private void ProcessAggregations(bool isPrevious, bool isCurrent)
+        private void ProcessAggregations(bool isPrevious, bool isCurrent, bool isNew)
         {
             Parallel.ForEach(
                 _criteriaSets,
@@ -426,6 +466,15 @@ namespace StockMarketAnalysis
                 },
                 (criteria, unused, local) =>
                 {
+                    if (isNew)
+                    {
+                        // Move current table info to previous table info
+                        local.Cmd.CommandText = "StockData.MoveAggregateData";
+                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        local.Cmd.ExecuteNonQuery();
+                        local.Cmd.Parameters.Clear();
+                    }
+
                     if (isPrevious || isCurrent) // Previous Day
                     {
                         local.Cmd.CommandText = isPrevious ? "StockData.GetPreviousAggregateData" : "StockData.GetCurrentAggregateData"; // Current or Previous Procedure
@@ -445,7 +494,32 @@ namespace StockMarketAnalysis
                     }
                     else if (isCurrent)
                     {
-                        // Output
+                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\AggregatedData.txt");
+                        (new FileInfo(directory)).Directory.Create();
+                        using (StreamWriter writer = new StreamWriter(directory))
+                        {
+                            writer.WriteLine("aggregatekey,aggregatesharesheld,aggregatepercentagesharesheld,aggregatevalue");
+
+                            using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    StringBuilder newLine = new StringBuilder();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        if (i != (reader.FieldCount - 1))
+                                        {
+                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                        else
+                                        {
+                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                    }
+                                    writer.WriteLine(newLine.ToString());
+                                }
+                            }
+                        }
                     }
 
                     return local;
@@ -484,6 +558,52 @@ namespace StockMarketAnalysis
                         local.Cmd.Parameters.AddWithValue("Value", value);
                         local.Cmd.ExecuteNonQuery();
                         local.Cmd.Parameters.Clear();
+                    }
+
+                    string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PostFilteredData.txt");
+                    (new FileInfo(directory)).Directory.Create();
+                    using (StreamWriter writer = new StreamWriter(directory))
+                    {
+                        using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                        {
+                            bool needsHeaders = true;
+                            while (reader.Read())
+                            {
+                                if (needsHeaders)
+                                {
+                                    StringBuilder newLine = new StringBuilder();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        if (i != (reader.FieldCount - 1))
+                                        {
+                                            newLine.AppendFormat("{0},", reader.GetName(i));
+                                        }
+                                        else
+                                        {
+                                            newLine.AppendFormat("{0}", reader.GetName(i));
+                                        }
+                                    }
+                                    writer.WriteLine(newLine.ToString());
+                                    needsHeaders = false;
+                                }
+                                else
+                                {
+                                    StringBuilder newLine = new StringBuilder();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        if (i != (reader.FieldCount - 1))
+                                        {
+                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                        else
+                                        {
+                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
+                                        }
+                                    }
+                                    writer.WriteLine(newLine.ToString());
+                                }
+                            }
+                        }
                     }
 
                     return local;
