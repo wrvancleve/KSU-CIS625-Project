@@ -53,12 +53,24 @@ namespace StockMarketAnalysis
                 uxTextBoxData.Text = setFinder.SelectedPath;
                 setFinder.SelectedPath = string.Empty;
             }
+            else if (button.Equals("uxButtonOutput"))
+            {
+                FolderBrowserDialog setFinder = new FolderBrowserDialog();
+                DialogResult result = setFinder.ShowDialog();
+                if (result != DialogResult.OK)
+                {
+                    return;
+                }
+                uxTextBoxOutput.Text = setFinder.SelectedPath;
+                setFinder.SelectedPath = string.Empty;
+            }
             else
             {
                 List<string> directories = new List<string>();
                 directories.Add(uxTextBoxCriteriaSet.Text);
                 directories.Add(uxTextBoxData.Text);
-                if(_process(directories))
+                directories.Add(uxTextBoxOutput.Text);
+                if (_process(directories, false))
                 {
                     MessageBox.Show("Program complete.");
                 }
