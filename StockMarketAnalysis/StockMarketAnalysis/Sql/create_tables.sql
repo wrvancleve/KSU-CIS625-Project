@@ -22,11 +22,7 @@ create table [StockData].[RawData]
 	PercentageSharesHeld float not null,
 	Direction nvarchar(32) not null,
 	[Value] float not null
-	--[Date] date not null
 )
-
--- Testing what's in the database
--- select * from [StockData].[RawData]
 
 -- holds data AFTER pre-filtering
 create table [StockData].[PreFilteredData]
@@ -41,7 +37,6 @@ create table [StockData].[PreFilteredData]
 	PercentageSharesHeld float not null,
 	Direction nvarchar(32) not null,
 	[Value] float not null, 
-	--[Date] datetimeoffset null
 )
 
 -- holds the current data AFTER aggregation

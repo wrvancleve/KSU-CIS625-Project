@@ -541,7 +541,7 @@ namespace StockMarketAnalysis
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.GetPostfilterData", conn);
+                    SqlCommand cmd = new SqlCommand("StockData.GetPostFilterData", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
