@@ -13,19 +13,35 @@ using System.Data;
 
 namespace StockMarketAnalysis
 {
-    public enum Operation
-    {
-        PreFilter,
-        Aggregation,
-        PostFilter
-    }
-
     public class MainWindowController
     {
         /// <summary>
         /// Connection string for sql server
         /// </summary>
         private const string ConnectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=U:\cis625\StockMarketAnalysis\StockMarketAnalysis\Database.mdf;Integrated Security=True";
+
+        private string MaxPostFilterQuery = String.Concat
+        (
+            @"SELECT CAD.AggregateKey, CAD.@ColumnName, ISNULL(MAD.@ColumnName, 0.0) ",
+            @"FROM [StockData].[CurrentAggregateData] CAD ",
+            @"LEFT JOIN [StockData].[MaxAggregateData] MAD ON MAD.AggregateKey = CAD.AggregateKey AND MAD.CriteriaSetId = CAD.CriteriaSetId ",
+            @"WHERE CAD.CriteriaSetId = @CriteriaSetId"
+        );
+
+        private string CrossesPostFilterQuery = String.Concat
+        (
+            @"SELECT CAD.AggregateKey, CAD.@ColumnName, ISNULL(PAD.@ColumnName, 0.0) ",
+            @"FROM [StockData].[CurrentAggregateData] CAD ",
+            @"LEFT JOIN [StockData].[PreviousAggregateData] PAD ON PAD.AggregateKey = CAD.AggregateKey AND PAD.CriteriaSetId = CAD.CriteriaSetId ",
+            @"WHERE CAD.CriteriaSetId = @CriteriaSetId"
+        );
+
+        private string ValuePostFilterQuery = String.Concat
+        (
+            @"SELECT CAD.AggregateKey, CAD.@ColumnName ",
+            @"FROM [StockData].[CurrentAggregateData] CAD ",
+            @"WHERE CAD.CriteriaSetId = @CriteriaSetId"
+        );
 
         /// <summary>
         /// Regex for determining if a line is a comment line
@@ -84,20 +100,21 @@ namespace StockMarketAnalysis
         /// </summary>
         /// <param name="directories">List containing the paths to the criteria set and data</param>
         /// <returns>Whether the data was processed correctly</returns>
-        public bool Handle(List<string> directories, bool isNew)
+        public void Handle(List<string> directories, bool isNew)
         {
             _criteriaSetPath = directories[0];
             _dataSetPath = directories[1];
             _outputPath = directories[2];
-            bool success = ObtainCriteriaSets() && ProcessData(isNew);
-            return success;
+            _criteriaSets = new List<CriteriaSet>();
+            ObtainCriteriaSets();
+            ProcessData(isNew);
         }
 
         /// <summary>
         /// Obtains the criteria sets from the criteria set file
         /// </summary>
         /// <returns></returns>
-        private bool ObtainCriteriaSets()
+        private void ObtainCriteriaSets()
         {
             try
             {
@@ -184,6 +201,18 @@ namespace StockMarketAnalysis
                         {
                             criteria.AggregationSums = currentAggregationSums; // Store Aggregated Sums
                             currentPostFilterColumn = line.Substring(1); // Save Post Filter Column
+                            if (currentPostFilterColumn.Equals("percentagesharesheld"))
+                            {
+                                currentPostFilterColumn = "AggregatePercentageSharesHeld";
+                            }
+                            else if (currentPostFilterColumn.Equals("value"))
+                            {
+                                currentPostFilterColumn = "AggregateValue";
+                            }
+                            else
+                            {
+                                currentPostFilterColumn = "AggregateSharesHeld";
+                            }
                         }
                         else if (currentOperation == '&')
                         {
@@ -197,7 +226,7 @@ namespace StockMarketAnalysis
                             }
                             else
                             {
-                                currentPostFilterValues.Add(line.Substring(1)); // Save Post Filter Value
+                                currentPostFilterValues.Add(line.Substring(1).Replace(",", String.Empty)); // Save Post Filter Value
                             }
                         }
 
@@ -210,13 +239,10 @@ namespace StockMarketAnalysis
 
                 criteria.PostFilter = new Tuple<string, string, List<string>>(currentPostFilterColumn, currentPostFilterComparison, currentPostFilterValues); // Store Post Filter
                 _criteriaSets.Add(criteria);
-
-                return true;
             }
             catch
             {
                 MessageBox.Show("Error while reading in criteria sets. Please check your file and try again.", "Criteria Set Read Error");
-                return false;
             }
         }
 
@@ -224,17 +250,15 @@ namespace StockMarketAnalysis
         /// Obtains the data from the data files.
         /// </summary>
         /// <returns>Whether the data was obtained successfully</returns>
-        private bool ProcessData(bool isNew)
+        private void ProcessData(bool isNew)
         {
             if (isNew)
             {
                 ProcessDataNew();
-                return true;
             }
             else
             {
                 ProcessDataHistory();
-                return true;
             }
         }
 
@@ -252,24 +276,22 @@ namespace StockMarketAnalysis
             foreach (string file in files)
             {
                 InitDatabase(); // Clear raw data
-                if (files.IndexOf(file) == files.Count - 1)
+                if (files.IndexOf(file) == files.Count - 1) // Current Day
                 {
                     ProcessFile(file); // Process file
-                    ProcessPreFilters(true); // Process prefilters with output
-                    ProcessAggregations(false, true, false); // Process aggregations with output
+                    ProcessCurrentPreFilters();
+                    ProcessCurrentAggregations(); // Process aggregations with output
                     ProcessPostFilters(); // Process postfilters with output
                 }
-                else if (files.IndexOf(file) == files.Count - 2)
+                else if (files.IndexOf(file) == files.Count - 2) // Previous Day
                 {
                     ProcessFile(file); // Process file
-                    ProcessPreFilters(false); // Process prefilters
-                    ProcessAggregations(true, false, false); // Process aggregations
+                    ProcessPreviousAggregations(); // Process aggregations
                 }
                 else
                 {
                     ProcessFile(file); // Process file
-                    ProcessPreFilters(false); // Process prefilters
-                    ProcessAggregations(false, false, false); // Process aggregations
+                    ProcessMaxAggregations(); // Process aggregations
                 }
             }
         }
@@ -278,8 +300,9 @@ namespace StockMarketAnalysis
         {
             InitDatabase(); // Clear raw data
             ProcessFile(_dataSetPath); // Process new file
-            ProcessPreFilters(true); // Process prefilter
-            ProcessAggregations(false, true, true); // Process aggregations
+            ProcessCurrentPreFilters(); // Process prefilters
+            InitAggregations(); // Move current aggregations to previous
+            ProcessCurrentAggregations(); // Process aggregations
             ProcessPostFilters();
         }
 
@@ -288,7 +311,20 @@ namespace StockMarketAnalysis
             using (SqlConnection conn = new SqlConnection())
             {
                 conn.ConnectionString = ConnectionString;
-                SqlCommand cmd = new SqlCommand("StockData.ClearRawData", conn);
+                SqlCommand cmd = new SqlCommand("StockData.ClearData", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                conn.Open();
+                cmd.ExecuteNonQuery();
+                conn.Close();
+            }
+        }
+
+        private void InitAggregations()
+        {
+            using (SqlConnection conn = new SqlConnection())
+            {
+                conn.ConnectionString = ConnectionString;
+                SqlCommand cmd = new SqlCommand("StockData.MoveAggregateData", conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 conn.Open();
                 cmd.ExecuteNonQuery();
@@ -298,6 +334,7 @@ namespace StockMarketAnalysis
 
         private void ProcessFile(string file)
         {
+            // .Take(100)
             Parallel.ForEach(
                 File.ReadLines(file),
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
@@ -305,7 +342,7 @@ namespace StockMarketAnalysis
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.InsertRawData", conn);
+                    SqlCommand cmd = new SqlCommand("StockData.InsertData", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
@@ -351,7 +388,7 @@ namespace StockMarketAnalysis
             );
         }
 
-        private void ProcessPreFilters(bool isOutput)
+        private void ProcessMaxAggregations()
         {
             Parallel.ForEach(
                 _criteriaSets,
@@ -360,96 +397,77 @@ namespace StockMarketAnalysis
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.GetPrefilterData", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
-                    return new { Conn = conn, Cmd = cmd };
+                    return new { Conn = conn };
                 },
                 (criteria, unused, local) =>
                 {
-                    string countries = "null";
-                    string stockType = "null";
-                    string direction = "null";
-
-                    foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
+                    if (criteria.PostFilter.Item2.Equals("MAX"))
                     {
-                        if (preFilter.Item1.Equals("holdercountry"))
+                        using (SqlTransaction trans = local.Conn.BeginTransaction())
                         {
-                            countries = String.Join(",", preFilter.Item3);
-                        }
-                        else if (preFilter.Item1.Equals("stocktype"))
-                        {
-                            if (preFilter.Item2.Equals("<>"))
-                            {
-                                stockType = preFilter.Item3[0].Equals("Preferred") ? "Common" : "Preferred";
-                            }
-                            else
-                            {
-                                stockType = preFilter.Item3[0];
-                            }
-                        }
-                        else
-                        {
-                            if (preFilter.Item2.Equals("<>"))
-                            {
-                                direction = preFilter.Item3[0].Equals("Long") ? "Short" : "Long";
-                            }
-                            else
-                            {
-                                direction = preFilter.Item3[0];
-                            }
-                        }
-                    }
+                            SqlCommand cmd = new SqlCommand();
+                            cmd.Connection = local.Conn;
+                            cmd.Transaction = trans;
+                            cmd.CommandText = "StockData.ObtainMaxAggregateData";
+                            cmd.CommandType = CommandType.StoredProcedure;
 
-                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                    local.Cmd.Parameters.AddWithValue("HolderCountries", countries);
-                    local.Cmd.Parameters.AddWithValue("StockType", stockType);
-                    local.Cmd.Parameters.AddWithValue("Direction", direction);
-                    local.Cmd.ExecuteNonQuery();
-                    local.Cmd.Parameters.Clear();
+                            string countries = null;
+                            string stockType = null;
+                            string direction = null;
 
-                    if (isOutput)
-                    {
-                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PreFilteredData.txt");
-                        (new FileInfo(directory)).Directory.Create();
-                        using (StreamWriter writer = new StreamWriter(directory))
-                        {
-                            writer.WriteLine("stockcode,stocktype,holderid,holdercountry,sharesheld,percentagesharesheld,direction,value");
-
-                            using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                            foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
                             {
-                                while (reader.Read())
+                                if (preFilter.Item1.Equals("holdercountry"))
                                 {
-                                    StringBuilder newLine = new StringBuilder();
-                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    countries = String.Join(",", preFilter.Item3);
+                                }
+                                else if (preFilter.Item1.Equals("stocktype"))
+                                {
+                                    if (preFilter.Item2.Equals("<>"))
                                     {
-                                        if (i != (reader.FieldCount - 1))
-                                        {
-                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
-                                        }
-                                        else
-                                        {
-                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
-                                        }
+                                        stockType = preFilter.Item3[0].Equals("Preferred") ? "Common" : "Preferred";
                                     }
-                                    writer.WriteLine(newLine.ToString());
+                                    else
+                                    {
+                                        stockType = preFilter.Item3[0];
+                                    }
+                                }
+                                else
+                                {
+                                    if (preFilter.Item2.Equals("<>"))
+                                    {
+                                        direction = preFilter.Item3[0].Equals("Long") ? "Short" : "Long";
+                                    }
+                                    else
+                                    {
+                                        direction = preFilter.Item3[0];
+                                    }
                                 }
                             }
+
+                            if (countries != null) cmd.Parameters.AddWithValue("HolderCountries", countries);
+                            if (stockType != null) cmd.Parameters.AddWithValue("StockType", stockType);
+                            if (direction != null) cmd.Parameters.AddWithValue("Direction", direction);
+                            cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                            cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                            cmd.ExecuteNonQuery();
+
+                            trans.Commit();
                         }
                     }
 
                     return local;
                 },
-                (conn) =>
+                (local) =>
                 {
-                    conn.Cmd.Dispose();
-                    conn.Conn.Dispose();
+                    local.Conn.Dispose();
                 }
             );
         }
 
-        private void ProcessAggregations(bool isPrevious, bool isCurrent, bool isNew)
+        private void ProcessPreviousAggregations()
         {
             Parallel.ForEach(
                 _criteriaSets,
@@ -458,76 +476,220 @@ namespace StockMarketAnalysis
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.GetMaxAggregateData", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
-                    return new { Conn = conn, Cmd = cmd };
+                    return new { Conn = conn };
                 },
                 (criteria, unused, local) =>
                 {
-                    if (isNew)
+                    if (criteria.PostFilter.Item2.Equals("CROSSES"))
                     {
-                        // Move current table info to previous table info
-                        local.Cmd.CommandText = "StockData.MoveAggregateData";
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
-                    }
-
-                    if (isPrevious || isCurrent) // Previous Day
-                    {
-                        local.Cmd.CommandText = isPrevious ? "StockData.GetPreviousAggregateData" : "StockData.GetCurrentAggregateData"; // Current or Previous Procedure
-                    }
-                    local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                    local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                    local.Cmd.ExecuteNonQuery();
-                    local.Cmd.Parameters.Clear();
-
-                    if (isPrevious)
-                    {
-                        local.Cmd.CommandText = "StockData.GetMaxAggregateData"; // Max Procedure
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
-                    }
-                    else if (isCurrent)
-                    {
-                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\AggregatedData.txt");
-                        (new FileInfo(directory)).Directory.Create();
-                        using (StreamWriter writer = new StreamWriter(directory))
+                        using (SqlTransaction trans = local.Conn.BeginTransaction())
                         {
-                            writer.WriteLine("aggregatekey,aggregatesharesheld,aggregatepercentagesharesheld,aggregatevalue");
+                            SqlCommand cmd = new SqlCommand();
+                            cmd.Connection = local.Conn;
+                            cmd.Transaction = trans;
+                            cmd.CommandText = "StockData.ObtainPreviousAggregateData";
+                            cmd.CommandType = CommandType.StoredProcedure;
 
-                            using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                            string countries = null;
+                            string stockType = null;
+                            string direction = null;
+
+                            foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
                             {
-                                while (reader.Read())
+                                if (preFilter.Item1.Equals("holdercountry"))
                                 {
-                                    StringBuilder newLine = new StringBuilder();
-                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    countries = String.Join(",", preFilter.Item3);
+                                }
+                                else if (preFilter.Item1.Equals("stocktype"))
+                                {
+                                    if (preFilter.Item2.Equals("<>"))
                                     {
-                                        if (i != (reader.FieldCount - 1))
-                                        {
-                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
-                                        }
-                                        else
-                                        {
-                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
-                                        }
+                                        stockType = preFilter.Item3[0].Equals("Preferred") ? "Common" : "Preferred";
                                     }
-                                    writer.WriteLine(newLine.ToString());
+                                    else
+                                    {
+                                        stockType = preFilter.Item3[0];
+                                    }
+                                }
+                                else
+                                {
+                                    if (preFilter.Item2.Equals("<>"))
+                                    {
+                                        direction = preFilter.Item3[0].Equals("Long") ? "Short" : "Long";
+                                    }
+                                    else
+                                    {
+                                        direction = preFilter.Item3[0];
+                                    }
                                 }
                             }
+
+                            if (countries != null) cmd.Parameters.AddWithValue("HolderCountries", countries);
+                            if (stockType != null) cmd.Parameters.AddWithValue("StockType", stockType);
+                            if (direction != null) cmd.Parameters.AddWithValue("Direction", direction);
+                            cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                            cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+                            cmd.ExecuteNonQuery();
+
+                            trans.Commit();
                         }
                     }
 
                     return local;
                 },
-                (conn) =>
+                (local) =>
                 {
-                    conn.Cmd.Dispose();
-                    conn.Conn.Dispose();
+                    local.Conn.Dispose();
+                }
+            );
+        }
+
+        private void ProcessCurrentPreFilters()
+        {
+            Parallel.ForEach(
+                _criteriaSets,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
+                {
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    conn.Open();
+
+                    return new { Conn = conn };
+                },
+                (criteria, unused, local) =>
+                {
+                    using (SqlTransaction trans = local.Conn.BeginTransaction())
+                    {
+                        SqlCommand cmd = new SqlCommand();
+                        cmd.Connection = local.Conn;
+                        cmd.Transaction = trans;
+                        cmd.CommandText = "StockData.ObtainCurrentPreFilteredData";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        string countries = null;
+                        string stockType = null;
+                        string direction = null;
+
+                        foreach (Tuple<string, string, List<string>> preFilter in criteria.PreFilters)
+                        {
+                            if (preFilter.Item1.Equals("holdercountry"))
+                            {
+                                countries = String.Join(",", preFilter.Item3);
+                            }
+                            else if (preFilter.Item1.Equals("stocktype"))
+                            {
+                                if (preFilter.Item2.Equals("<>"))
+                                {
+                                    stockType = preFilter.Item3[0].Equals("Preferred") ? "Common" : "Preferred";
+                                }
+                                else
+                                {
+                                    stockType = preFilter.Item3[0];
+                                }
+                            }
+                            else
+                            {
+                                if (preFilter.Item2.Equals("<>"))
+                                {
+                                    direction = preFilter.Item3[0].Equals("Long") ? "Short" : "Long";
+                                }
+                                else
+                                {
+                                    direction = preFilter.Item3[0];
+                                }
+                            }
+                        }
+
+                        if (countries != null) cmd.Parameters.AddWithValue("HolderCountries", countries);
+                        if (stockType != null) cmd.Parameters.AddWithValue("StockType", stockType);
+                        if (direction != null) cmd.Parameters.AddWithValue("Direction", direction);
+                        cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+
+                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PreFilteredData.csv");
+                        (new FileInfo(directory)).Directory.Create();
+                        using (StreamWriter writer = new StreamWriter(directory))
+                        {
+                            writer.WriteLine("StockCode,StockType,HolderId,HolderCountry,SharesHeld,PercentageSharesHeld,Direction,Value");
+
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                DataTable table = new DataTable();
+                                table.Load(reader);
+
+                                foreach (DataRow row in table.Rows)
+                                {
+                                    writer.WriteLine(String.Join(",", row.ItemArray));
+                                }
+                            }
+                        }
+
+                        trans.Commit();
+                    }
+
+                    return local;
+                },
+                (local) =>
+                {
+                    local.Conn.Dispose();
+                }
+            );
+        }
+
+        private void ProcessCurrentAggregations()
+        {
+            Parallel.ForEach (
+                _criteriaSets,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                () =>
+                {
+                    SqlConnection conn = new SqlConnection();
+                    conn.ConnectionString = ConnectionString;
+                    conn.Open();
+
+                    return new { Conn = conn };
+                },
+                (criteria, unused, local) =>
+                {
+                    using (SqlTransaction trans = local.Conn.BeginTransaction())
+                    {
+                        SqlCommand cmd = new SqlCommand();
+                        cmd.Connection = local.Conn;
+                        cmd.Transaction = trans;
+                        cmd.CommandText = "StockData.ObtainCurrentAggregateData";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
+                        cmd.Parameters.AddWithValue("AggregateKeys", String.Join("~", criteria.AggregationColumns));
+
+                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\AggregatedData.csv");
+                        (new FileInfo(directory)).Directory.Create();
+                        using (StreamWriter writer = new StreamWriter(directory))
+                        {
+                            writer.WriteLine("AggregateKey,AggregateSharesheld,AggregatePercentageSharesheld,AggregateValue");
+
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                DataTable table = new DataTable();
+                                table.Load(reader);
+
+                                foreach (DataRow row in table.Rows)
+                                {
+                                    writer.WriteLine(String.Join(",", row.ItemArray));
+                                }
+                            }
+                        }
+
+                        trans.Commit();
+                    }
+
+                    return local;
+                },
+                (local) =>
+                {
+                    local.Conn.Dispose();
                 }
             );
         }
@@ -541,77 +703,106 @@ namespace StockMarketAnalysis
                 {
                     SqlConnection conn = new SqlConnection();
                     conn.ConnectionString = ConnectionString;
-                    SqlCommand cmd = new SqlCommand("StockData.GetPostFilterData", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
                     conn.Open();
 
-                    return new { Conn = conn, Cmd = cmd };
+                    return new { Conn = conn};
                 },
                 (criteria, unused, local) =>
                 {
-                    // https://stackoverflow.com/questions/22176471/pass-liststring-into-sql-parameter
-                    foreach (string value in criteria.PostFilter.Item3)
+                    using (SqlTransaction trans = local.Conn.BeginTransaction())
                     {
-                        local.Cmd.Parameters.AddWithValue("CriteriaSetId", criteria.Number);
-                        local.Cmd.Parameters.AddWithValue("ColumnName", criteria.PostFilter.Item1);
-                        local.Cmd.Parameters.AddWithValue("Comparison", criteria.PostFilter.Item2);
-                        local.Cmd.Parameters.AddWithValue("Value", value);
-                        local.Cmd.ExecuteNonQuery();
-                        local.Cmd.Parameters.Clear();
-                    }
-
-                    string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PostFilteredData.txt");
-                    (new FileInfo(directory)).Directory.Create();
-                    using (StreamWriter writer = new StreamWriter(directory))
-                    {
-                        using (SqlDataReader reader = local.Cmd.ExecuteReader())
+                        SqlCommand cmd = new SqlCommand();
+                        cmd.Connection = local.Conn;
+                        cmd.Transaction = trans;
+                        if (criteria.PostFilter.Item2.Equals("MAX"))
                         {
-                            bool needsHeaders = true;
-                            while (reader.Read())
+                            cmd.CommandText = MaxPostFilterQuery.Replace(@"@ColumnName", criteria.PostFilter.Item1);
+                        }
+                        else if (criteria.PostFilter.Item2.Equals("CROSSES"))
+                        {
+                            cmd.CommandText = CrossesPostFilterQuery.Replace(@"@ColumnName", criteria.PostFilter.Item1);
+                        }
+                        else
+                        {
+                            cmd.CommandText = ValuePostFilterQuery.Replace(@"@ColumnName", criteria.PostFilter.Item1);
+                        }
+                        cmd.CommandText = cmd.CommandText.Replace(@"@CriteriaSetId", criteria.Number.ToString());
+
+                        string directory = String.Concat(_outputPath, @"\CriteriaSet", criteria.Number, @"\PostFilteredData.csv");
+                        using (StreamWriter writer = new StreamWriter(directory))
+                        {
+                            using (SqlDataReader reader = cmd.ExecuteReader())
                             {
-                                if (needsHeaders)
+                                DataTable table = new DataTable();
+                                table.Load(reader);
+
+                                /* Get column headers */
+                                List<string> allColumns = table.Columns.Cast<DataColumn>().Select(x => x.ColumnName).ToList();
+                                List<string> newColumns = new List<string>();
+                                foreach (string value in criteria.PostFilter.Item3)
                                 {
-                                    StringBuilder newLine = new StringBuilder();
-                                    for (int i = 0; i < reader.FieldCount; i++)
-                                    {
-                                        if (i != (reader.FieldCount - 1))
-                                        {
-                                            newLine.AppendFormat("{0},", reader.GetName(i));
-                                        }
-                                        else
-                                        {
-                                            newLine.AppendFormat("{0}", reader.GetName(i));
-                                        }
-                                    }
-                                    writer.WriteLine(newLine.ToString());
-                                    needsHeaders = false;
+                                    string column = String.Join(" ", new string[] { criteria.PostFilter.Item1, criteria.PostFilter.Item2, value });
+                                    table.Columns.Add(column);
+                                    allColumns.Add(column);
+                                    newColumns.Add(column);
                                 }
-                                else
+                                writer.WriteLine(String.Join(",", allColumns.ToArray())); // Write header
+
+                                foreach (DataRow row in table.Rows)
                                 {
-                                    StringBuilder newLine = new StringBuilder();
-                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    if (criteria.PostFilter.Item2.Equals("MAX") || criteria.PostFilter.Item2.Equals("CROSSES"))
                                     {
-                                        if (i != (reader.FieldCount - 1))
+                                        for (int i = 0; i < newColumns.Count; i++)
                                         {
-                                            newLine.AppendFormat("{0},", Convert.ToString(reader.GetValue(i)));
-                                        }
-                                        else
-                                        {
-                                            newLine.AppendFormat("{0}", Convert.ToString(reader.GetValue(i)));
+                                            // Row[1] = Current Aggregate Value
+                                            // Row[2] = Max Aggregate Value or Previous Aggregate Value
+
+                                            string column = newColumns[i];
+                                            double value = Convert.ToDouble(criteria.PostFilter.Item3[i]);
+                                            row[newColumns[i]] = Convert.ToDouble(row[2]) < value && Convert.ToDouble(row[1]) > value;
                                         }
                                     }
-                                    writer.WriteLine(newLine.ToString());
+                                    else
+                                    {
+                                        for (int i = 0; i < newColumns.Count; i++)
+                                        {
+                                            // Row[1] = Current Aggregate Value
+
+                                            string column = newColumns[i];
+                                            double value = Convert.ToDouble(criteria.PostFilter.Item3[i]);
+
+                                            switch (criteria.PostFilter.Item2)
+                                            {
+                                                case "<":
+                                                    row[newColumns[i]] = Convert.ToDouble(row[1]) < value;
+                                                    break;
+                                                case "<=":
+                                                    row[newColumns[i]] = Convert.ToDouble(row[1]) <= value;
+                                                    break;
+                                                case ">":
+                                                    row[newColumns[i]] = Convert.ToDouble(row[1]) > value;
+                                                    break;
+                                                case ">=":
+                                                    row[newColumns[i]] = Convert.ToDouble(row[1]) >= value;
+                                                    break;
+                                            }
+                                        }
+                                    }
+
+                                    /* Write line */
+                                    writer.WriteLine(String.Join(",", row.ItemArray));
                                 }
                             }
                         }
+
+                        trans.Commit();
                     }
 
                     return local;
                 },
-                (conn) =>
+                (local) =>
                 {
-                    conn.Cmd.Dispose();
-                    conn.Conn.Dispose();
+                    local.Conn.Dispose();
                 }
             );
         }

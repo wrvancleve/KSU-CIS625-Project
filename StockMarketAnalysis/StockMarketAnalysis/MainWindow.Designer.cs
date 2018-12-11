@@ -35,12 +35,13 @@
             this.uxButtonGo = new System.Windows.Forms.Button();
             this.uxTextBoxOutput = new System.Windows.Forms.TextBox();
             this.uxButtonOutput = new System.Windows.Forms.Button();
+            this.uxButtonProcessType = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // uxButtonCriteriaSet
             // 
             this.uxButtonCriteriaSet.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxButtonCriteriaSet.Location = new System.Drawing.Point(12, 33);
+            this.uxButtonCriteriaSet.Location = new System.Drawing.Point(12, 72);
             this.uxButtonCriteriaSet.Name = "uxButtonCriteriaSet";
             this.uxButtonCriteriaSet.Size = new System.Drawing.Size(165, 50);
             this.uxButtonCriteriaSet.TabIndex = 0;
@@ -51,7 +52,7 @@
             // uxTextBoxCriteriaSet
             // 
             this.uxTextBoxCriteriaSet.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxTextBoxCriteriaSet.Location = new System.Drawing.Point(192, 44);
+            this.uxTextBoxCriteriaSet.Location = new System.Drawing.Point(192, 83);
             this.uxTextBoxCriteriaSet.Name = "uxTextBoxCriteriaSet";
             this.uxTextBoxCriteriaSet.Size = new System.Drawing.Size(375, 26);
             this.uxTextBoxCriteriaSet.TabIndex = 1;
@@ -59,7 +60,7 @@
             // uxTextBoxData
             // 
             this.uxTextBoxData.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxTextBoxData.Location = new System.Drawing.Point(192, 106);
+            this.uxTextBoxData.Location = new System.Drawing.Point(192, 145);
             this.uxTextBoxData.Name = "uxTextBoxData";
             this.uxTextBoxData.Size = new System.Drawing.Size(375, 26);
             this.uxTextBoxData.TabIndex = 3;
@@ -67,7 +68,7 @@
             // uxButtonData
             // 
             this.uxButtonData.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxButtonData.Location = new System.Drawing.Point(12, 95);
+            this.uxButtonData.Location = new System.Drawing.Point(12, 134);
             this.uxButtonData.Name = "uxButtonData";
             this.uxButtonData.Size = new System.Drawing.Size(165, 50);
             this.uxButtonData.TabIndex = 2;
@@ -79,7 +80,7 @@
             // 
             this.uxButtonGo.Enabled = false;
             this.uxButtonGo.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxButtonGo.Location = new System.Drawing.Point(217, 224);
+            this.uxButtonGo.Location = new System.Drawing.Point(217, 274);
             this.uxButtonGo.Name = "uxButtonGo";
             this.uxButtonGo.Size = new System.Drawing.Size(150, 50);
             this.uxButtonGo.TabIndex = 4;
@@ -90,7 +91,7 @@
             // uxTextBoxOutput
             // 
             this.uxTextBoxOutput.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxTextBoxOutput.Location = new System.Drawing.Point(192, 168);
+            this.uxTextBoxOutput.Location = new System.Drawing.Point(192, 207);
             this.uxTextBoxOutput.Name = "uxTextBoxOutput";
             this.uxTextBoxOutput.Size = new System.Drawing.Size(375, 26);
             this.uxTextBoxOutput.TabIndex = 6;
@@ -98,19 +99,32 @@
             // uxButtonOutput
             // 
             this.uxButtonOutput.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.uxButtonOutput.Location = new System.Drawing.Point(12, 157);
+            this.uxButtonOutput.Location = new System.Drawing.Point(12, 196);
             this.uxButtonOutput.Name = "uxButtonOutput";
             this.uxButtonOutput.Size = new System.Drawing.Size(165, 50);
             this.uxButtonOutput.TabIndex = 5;
             this.uxButtonOutput.Text = "Select Output Folder";
             this.uxButtonOutput.UseVisualStyleBackColor = true;
+            this.uxButtonOutput.Click += new System.EventHandler(this.uxButtonHandler);
+            // 
+            // uxButtonProcessType
+            // 
+            this.uxButtonProcessType.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.uxButtonProcessType.Location = new System.Drawing.Point(217, 12);
+            this.uxButtonProcessType.Name = "uxButtonProcessType";
+            this.uxButtonProcessType.Size = new System.Drawing.Size(150, 40);
+            this.uxButtonProcessType.TabIndex = 7;
+            this.uxButtonProcessType.Text = "Single";
+            this.uxButtonProcessType.UseVisualStyleBackColor = true;
+            this.uxButtonProcessType.Click += new System.EventHandler(this.uxButtonHandler);
             // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.ClientSize = new System.Drawing.Size(584, 286);
+            this.ClientSize = new System.Drawing.Size(584, 336);
+            this.Controls.Add(this.uxButtonProcessType);
             this.Controls.Add(this.uxTextBoxOutput);
             this.Controls.Add(this.uxButtonOutput);
             this.Controls.Add(this.uxButtonGo);
@@ -134,6 +148,7 @@
         private System.Windows.Forms.Button uxButtonGo;
         private System.Windows.Forms.TextBox uxTextBoxOutput;
         private System.Windows.Forms.Button uxButtonOutput;
+        private System.Windows.Forms.Button uxButtonProcessType;
     }
 }
 
