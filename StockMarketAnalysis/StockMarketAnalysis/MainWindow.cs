@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -44,14 +45,27 @@ namespace StockMarketAnalysis
             }
             else if (button.Equals("uxButtonData"))
             {
-                FolderBrowserDialog setFinder = new FolderBrowserDialog();
-                DialogResult result = setFinder.ShowDialog();
-                if (result != DialogResult.OK)
+                if (uxButtonProcessType.Text.Equals("Multiple"))
                 {
-                    return;
+                    FolderBrowserDialog setFinder = new FolderBrowserDialog();
+                    DialogResult result = setFinder.ShowDialog();
+                    if (result != DialogResult.OK)
+                    {
+                        return;
+                    }
+                    uxTextBoxData.Text = setFinder.SelectedPath;
+                    setFinder.SelectedPath = string.Empty;
                 }
-                uxTextBoxData.Text = setFinder.SelectedPath;
-                setFinder.SelectedPath = string.Empty;
+                else
+                {
+                    OpenFileDialog openFileDialog = new OpenFileDialog();
+                    DialogResult result = openFileDialog.ShowDialog();
+
+                    if (result != DialogResult.OK) return;
+
+                    uxTextBoxData.Text = openFileDialog.FileName;
+                    openFileDialog.FileName = string.Empty;
+                }
             }
             else if (button.Equals("uxButtonOutput"))
             {
@@ -64,16 +78,27 @@ namespace StockMarketAnalysis
                 uxTextBoxOutput.Text = setFinder.SelectedPath;
                 setFinder.SelectedPath = string.Empty;
             }
+            else if (button.Equals("uxButtonProcessType"))
+            {
+                if (((Button)sender).Text.Equals("Single"))
+                {
+                    ((Button)sender).Text = "Multiple";
+                }
+                else
+                {
+                    ((Button)sender).Text = "Single";
+                }
+            }
             else
             {
                 List<string> directories = new List<string>();
                 directories.Add(uxTextBoxCriteriaSet.Text);
                 directories.Add(uxTextBoxData.Text);
                 directories.Add(uxTextBoxOutput.Text);
-                if (_process(directories, false))
-                {
-                    MessageBox.Show("Program complete.");
-                }
+                Stopwatch watch = Stopwatch.StartNew();
+                _process(directories, uxButtonProcessType.Text.Equals("Single"));
+                watch.Stop();
+                    MessageBox.Show("Program complete." + " Elapsed Time: " + watch.Elapsed.ToString());
             }
 
             uxButtonGo.Enabled = (uxTextBoxCriteriaSet.TextLength > 0 && uxTextBoxData.TextLength > 0); // Check for enable go button

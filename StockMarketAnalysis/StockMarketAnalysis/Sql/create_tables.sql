@@ -1,73 +1,104 @@
-/* Authors: William Van Cleve, Thomas Rolston, Joseph Webster
+/* 
+ * Authors: William Van Cleve, Thomas Rolston, Joseph Webster
  * Date: December 7th, 2018
  * Professor: Dr. Daniel Andresen
  * Course: CIS 625 | Concurrent Systems
  * Stock Market Analysis Optimization
  */
-DROP table if exists [StockData].[RawData];
-DROP table if exists [StockData].[PreFilteredData];
-DROP table if exists [StockData].[CurrentAggregateData];
-DROP table if exists [StockData].[PreviousAggregateData];
-DROP table if exists [StockData].[MaxAggregateData];
 
--- holds data BEFORE pre-filtering
-create table [StockData].[RawData]
+DROP TABLE IF EXISTS [StockData].[RawData];
+DROP TABLE IF EXISTS [StockData].[CurrentPreFilteredData];
+DROP TABLE IF EXISTS [StockData].[MaxAggregateData];
+DROP TABLE IF EXISTS [StockData].[PreviousAggregateData];
+DROP TABLE IF EXISTS [StockData].[CurrentAggregateData];
+
+/*
+TRUNCATE TABLE [StockData].[RawData];
+TRUNCATE TABLE [StockData].[CurrentAggregateData];
+TRUNCATE TABLE [StockData].[CurrentPreFilteredData];
+TRUNCATE TABLE [StockData].[PreviousAggregateData];
+TRUNCATE TABLE [StockData].[MaxAggregateData];
+*/
+
+/* Holds raw data read in from the file */
+CREATE TABLE [StockData].[RawData]
 (
-	DataId int not null identity(1,1) primary key clustered,
-	StockCode nvarchar(32) not null,
-	StockType nvarchar(32) not null,
-	HolderId nvarchar(32) not null,
-	HolderCountry nvarchar(32) not null,
-	SharesHeld float not null,
-	PercentageSharesHeld float not null,
-	Direction nvarchar(32) not null,
-	[Value] float not null
+	DataId INT NOT NULL IDENTITY(1,1) PRIMARY KEY CLUSTERED,
+	StockCode NVARCHAR(16) NOT NULL,
+	StockType NVARCHAR(16) NOT NULL,
+	HolderId NVARCHAR(32) NOT NULL,
+	HolderCountry NVARCHAR(64) NOT NULL,
+	SharesHeld FLOAT NOT NULL,
+	PercentageSharesHeld FLOAT NOT NULL,
+	Direction NVARCHAR(16) NOT NULL,
+	[Value] FLOAT NOT NULL
 )
 
--- holds data AFTER pre-filtering
-create table [StockData].[PreFilteredData]
+/* Holds raw data read in from the file */
+CREATE TABLE [StockData].[CurrentPreFilteredData]
 (
-	PreFilterId int not null identity(1,1) primary key clustered,
-	CriteriaSetId int not null,
-	StockCode nvarchar(32) not null,
-	StockType nvarchar(32) not null,
-	HolderId nvarchar(32) not null,
-	HolderCountry nvarchar(32) not null,
-	SharesHeld float not null,
-	PercentageSharesHeld float not null,
-	Direction nvarchar(32) not null,
-	[Value] float not null, 
+	DataId INT NOT NULL IDENTITY(1,1),
+	CriteriaSetId INT NOT NULL,
+	StockCode NVARCHAR(16) NOT NULL,
+	StockType NVARCHAR(16) NOT NULL,
+	HolderId NVARCHAR(32) NOT NULL,
+	HolderCountry NVARCHAR(64) NOT NULL,
+	SharesHeld FLOAT NOT NULL,
+	PercentageSharesHeld FLOAT NOT NULL,
+	Direction NVARCHAR(16) NOT NULL,
+	[Value] FLOAT NOT NULL
+
+	PRIMARY KEY CLUSTERED
+	(
+		DataId ASC,
+		CriteriaSetId ASC
+	)
 )
 
--- holds the current data AFTER aggregation
-create table [StockData].[CurrentAggregateData] 
+/* Holds max aggregate data from the past */
+CREATE TABLE [StockData].[MaxAggregateData] 
 (
-	CurrentAggregateId int not null identity(1,1) primary key clustered,
-	CriteriaSetId int not null,
-	AggregateKey nvarchar(128) not null,
-	AggregateSharesHeld float not null,
-	AggregatePercentageSharesHeld float not null, 
-	AggregateValue float not null	
+	CriteriaSetId INT NOT NULL,
+	AggregateKey NVARCHAR(144) NOT NULL,
+	AggregateSharesHeld FLOAT NOT NULL,
+	AggregatePercentageSharesHeld FLOAT NOT NULL, 
+	AggregateValue FLOAT NOT NULL
+    
+	PRIMARY KEY CLUSTERED
+	(
+		CriteriaSetId ASC,
+		AggregateKey ASC
+	)
 )
 
--- holds the previous days data AFTER aggregation
-create table [StockData].[PreviousAggregateData]
+/* Holds aggregate data from the previous day */
+CREATE TABLE [StockData].[PreviousAggregateData]
 (
-	PreviousAggregateId int not null identity(1,1) primary key clustered,
-	CriteriaSetId int not null,
-	AggregateKey nvarchar(128) not null,
-	AggregateSharesHeld float not null,
-	AggregatePercentageSharesHeld float not null, 
-	AggregateValue float not null
+	CriteriaSetId INT NOT NULL,
+	AggregateKey NVARCHAR(144) NOT NULL,
+	AggregateSharesHeld FLOAT NOT NULL,
+	AggregatePercentageSharesHeld FLOAT NOT NULL, 
+	AggregateValue FLOAT NOT NULL
+    
+	PRIMARY KEY CLUSTERED
+	(
+		CriteriaSetId ASC,
+		AggregateKey ASC
+	)
 )
 
--- stores the results of Max (sharesheld, value of shares, percentage held)
-create table [StockData].[MaxAggregateData] 
+/* Holds aggregate data from the current day */
+CREATE TABLE [StockData].[CurrentAggregateData] 
 (
-	MaxAggregateId int not null identity(1,1) primary key clustered,
-	CriteriaSetId int not null,
-	AggregateKey nvarchar(128) not null,
-	AggregateSharesHeld float not null,
-	AggregatePercentageSharesHeld float not null, 
-	AggregateValue float not null
+	CriteriaSetId INT NOT NULL,
+	AggregateKey NVARCHAR(144) NOT NULL,
+	AggregateSharesHeld FLOAT NOT NULL,
+	AggregatePercentageSharesHeld FLOAT NOT NULL, 
+	AggregateValue FLOAT NOT NULL	
+
+	PRIMARY KEY CLUSTERED
+	(
+		CriteriaSetId ASC,
+		AggregateKey ASC
+	)
 )
